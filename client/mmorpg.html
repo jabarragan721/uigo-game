@@ -11,81 +11,70 @@
       <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
       <script src="https://kit.fontawesome.com/4388a22358.js" crossorigin="anonymous"></script>
       <title>Uigo Game</title>
+      <style>
+        input[type="number"] {
+        -webkit-appearance: textfield;
+        -moz-appearance: textfield;
+        appearance: textfield;
+        }
+
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button {
+        -webkit-appearance: none;
+        }
+
+        .number-input {
+        border: 2px solid #ddd;
+        display: inline-flex;
+        }
+
+        .number-input,
+        .number-input * {
+        box-sizing: border-box;
+        }
+
+        .number-input button {
+        outline:none;
+        -webkit-appearance: none;
+        background-color: transparent;
+        border: none;
+        align-items: center;
+        justify-content: center;
+        width: 2rem;
+        height: 2rem;
+        cursor: pointer;
+        margin: 0;
+        position: relative;
+        }
+
+        .number-input button:before,
+        .number-input button:after {
+        display: inline-block;
+        position: absolute;
+        content: '';
+        width: 1rem;
+        height: 2px;
+        background-color: #212121;
+        transform: translate(-50%, -50%);
+        }
+        .number-input button.plus:after {
+        transform: translate(-50%, -50%) rotate(90deg);
+        }
+
+        .number-input input[type=number] {
+        font-family: sans-serif;
+        max-width: 5rem;
+        padding: .5rem;
+        border: solid #ddd;
+        border-width: 0 2px;
+        font-size: medium;
+        height: 2rem;
+        font-weight: bold;
+        text-align: center;
+        }
+      </style>
     </head>
-    <style>
-      input[type="number"] {
-      -webkit-appearance: textfield;
-      -moz-appearance: textfield;
-      appearance: textfield;
-      }
-
-      input[type=number]::-webkit-inner-spin-button,
-      input[type=number]::-webkit-outer-spin-button {
-      -webkit-appearance: none;
-      }
-
-      .number-input {
-      border: 2px solid #ddd;
-      display: inline-flex;
-      }
-
-      .number-input,
-      .number-input * {
-      box-sizing: border-box;
-      }
-
-      .number-input button {
-      outline:none;
-      -webkit-appearance: none;
-      background-color: transparent;
-      border: none;
-      align-items: center;
-      justify-content: center;
-      width: 2rem;
-      height: 2rem;
-      cursor: pointer;
-      margin: 0;
-      position: relative;
-      }
-
-      .number-input button:before,
-      .number-input button:after {
-      display: inline-block;
-      position: absolute;
-      content: '';
-      width: 1rem;
-      height: 2px;
-      background-color: #212121;
-      transform: translate(-50%, -50%);
-      }
-      .number-input button.plus:after {
-      transform: translate(-50%, -50%) rotate(90deg);
-      }
-
-      .number-input input[type=number] {
-      font-family: sans-serif;
-      max-width: 5rem;
-      padding: .5rem;
-      border: solid #ddd;
-      border-width: 0 2px;
-      font-size: medium;
-      height: 2rem;
-      font-weight: bold;
-      text-align: center;
-      }
-    </style>
     <body>
-      <div id="ModalAddress" class="modal-main">
-        <div class="modal-content2">
-        <div class="modal-header-login">
-          <span id="close_adr" class="close-login">&times;</span>
-        </div>
-        <div class="modal-body w3-center">
-          <p>¿Quieres entrar a esta tienda?</p>
-          <button class="button" type="button" name="gotostore" id="go_store">Ir a la Tienda</button>
-        </div>
-        </div>
-      </div>
       <div>
         <div id="div1">
           <canvas id="background_layer" style="left:0;top:0;z-index:0"></canvas>
@@ -427,6 +416,7 @@
             }
             function move_elements(){
               Object.keys(Game.players).forEach(function(key){
+                //control de velocidad de cambio de frames en la animación del personaje
                 var speed = Game.players[key]["speed"];
                 Game.map.slow_speed++
                 if(Game.map.slow_speed>4){Game.map.slow_speed=0;}
@@ -439,6 +429,7 @@
                   }
                 }
                 if(Object.keys(Game.players[key]["ruta"]).length>0){
+                  //chequear si se ha completado la ruta de movimiento
                   if(Game.players[key]["step"] > Object.keys(Game.players[key]["ruta"]).length){
                     Game.players[key]["ruta"] = {};
                     if(key == Game.hero.id){
@@ -452,7 +443,9 @@
                     }
                   }
                   try {
+                    // chequear si el segmento de la ruta requiere moviemnto en X
                     if(Object.keys(Game.players[key]["ruta"][Game.players[key]["step"]])=="x"){
+                      //ajustar los pasos a recorrer para que sean divisible en la velocidad
                       var ajuste = Math.floor(Game.players[key]["ruta"][Game.players[key]["step"]].x/speed)*speed;
                       Game.players[key]["ruta"][Game.players[key]["step"]].x = ajuste==0?speed:ajuste;
                       var dir = Game.players[key]["ruta"][Game.players[key]["step"]].x<0?-speed:speed;
@@ -471,11 +464,13 @@
                           }
                         ]));
                       }
+                      //chequear si se han completado los movimientos del segmento de la ruta
                       if(Game.players[key]["moves"]==Game.players[key]["ruta"][Game.players[key]["step"]].x){
                         Game.players[key]["step"]++;
                         Game.players[key]["moves"]=0;
                       }
                     }
+                    // chequear si el segmento de la ruta requiere moviemnto en Y
                     else if(Object.keys(Game.players[key]["ruta"][Game.players[key]["step"]])=="y"){
                       var ajuste = Math.floor(Game.players[key]["ruta"][Game.players[key]["step"]].y/speed)*speed;
                       Game.players[key]["ruta"][Game.players[key]["step"]].y = ajuste==0?speed:ajuste;
@@ -500,6 +495,7 @@
                         Game.players[key]["moves"]=0;
                       }
                     }
+                    // chequear si el segmento de la ruta es una conección a otro mapa
                     else if(Object.keys(Game.players[key]["ruta"][Game.players[key]["step"]])=="c"){
                       if(key == Game.hero.id){
                         websocket.send(JSON.stringify([
@@ -529,23 +525,24 @@
                   }
                 }
               });
+              //chequear si hay items en movimiento
               if(Object.keys(Game.items_moving).length>0){
                 var items = Game.items_moving;
                 Object.keys(items).forEach(function(key){
                   if(items[key]["animated"]){
-                    items[key]["frame_ratio"]++;
+                    items[key]["frame_ratio"]++;//contador para reiniciar Frames de animación
                     if(items[key]["frame_ratio"]>4){items[key]["frame_ratio"]=0;}
                     else if(items[key]["frame_ratio"]==2){
-                      items[key]["frame"]++;
+                      items[key]["frame"]++;//cambiar el frame de animación del item
                       if(items[key]["frame"]>2){items[key]["frame"]=0;}
                     }
                   }
-                  if(items[key]["alcance"]=="largo"){
+                  if(items[key]["alcance"]=="largo"){//establecer coordenadas de la ruta del item - las coordenadas se procesan en el server
                     items[key]["x"] += items[key]["dx"];
                     items[key]["y"] += items[key]["dy"];
                   }
                   else{
-                    if(items[key]["w_dir"]=="up"){
+                    if(items[key]["w_dir"]=="up"){//en ataques de corto alcance la posicion del arma se establece segun la posicion del jugador que ataca
                       items[key]["x"] = Game.players[items[key]["player"]]["posX"];
                       items[key]["y"] = Game.players[items[key]["player"]]["posY"]-items[key]["height"];
                     }
@@ -564,7 +561,7 @@
 
                   }
                   if((items[key]["x"]<0||items[key]["x"]>Game.map.width)||(items[key]["y"]<0||items[key]["y"]>Game.map.height)){
-                    delete items[key];
+                    delete items[key];//Eliminar proyectil al salir de mapa
                   }
                   else if(items[key]["player"]==Game.hero.id){
                       check_dammage(items[key]["x"]+items[key]["width"]/2,items[key]["y"]+items[key]["height"]/2,key,"hero");
@@ -599,7 +596,7 @@
                 $("text").value="";
               }
             }
-            function proccess_data(info){
+            function proccess_data(info){//Funcion que procesa los datos recibidos del server segun el tipo de data
               if(info["type"]=="new_player"){
                 Game.players[info["data"]["Socket"]]=info["data"];
                 Object.keys(Game.players).forEach(function(key){
@@ -735,6 +732,7 @@
                 }
               Game.camera.CamX=camX;
               Game.camera.CamY=camY;
+              //Trasladar los canvas segun el movimiento de la camara
               ctx_background.translate(-camX, -camY);
               ctx_sky.translate(-camX, -camY);
               ctx_players.translate(-camX, -camY);
@@ -749,7 +747,7 @@
                 Game.players[Game.hero.id]["moves"] = 0;
                 Game.hero.pointer["draw"] = "no";
               }
-              websocket.send(JSON.stringify([
+              websocket.send(JSON.stringify([ //enviar la posición de destino al server
                 {type: 'new_state'},
                 {map: Game.map.name,
                 posX: Game.players[Game.hero.id]["posX"],
@@ -844,7 +842,7 @@
               var outfit_img = "outfit" + outfit.toString() + "_" + action + ".png";
               const cols= 24;
               const rows= action=="shoot"?2:1;
-              const chars={
+              const chars={//cada item del array es la posicion de la imagen para cada frame de animación
                 walk:{right:[1,2,3,4,5,6],up:[7,8,9,10,11,12],left:[13,14,15,16,17,18],down:[19,20,21,22,23,24],empty_pixels:0},
                 stop:{right:[1,2,3,4,5,6],up:[7,8,9,10,11,12],left:[13,14,15,16,17,18],down:[19,20,21,22,23,24],empty_pixels:0},
                 shoot:{right:[1,25,26,27],up:[7,28,29,30],left:[13,31,32,33],down:[19,34,35,36],empty_pixels:16},
@@ -924,7 +922,7 @@
                 ctx.drawImage(img,x,y,tile_w,tile_h,posx+((tile_w-w)/2),posy+((tile_h-h)/2),w,h);
               }
             }
-            function drawBubble(txt,x,y,type){
+            function drawBubble(txt,x,y,type){ //Burbuja de chat
               var ctx_target = ctx_sky;
               ctx_target.font = "12px Arial";
               var text = txt;
@@ -1015,7 +1013,7 @@
                   var player_2_y = players[key]["posY"] + players[key]["H"];
                   if (shouldSkip) {
                     return;
-                  }
+                  }//chequear if se ha seleccionado un jugador con el mouse o con el touch
                   if(x < player_2_x && x > player_1_x && y < player_2_y && y > player_1_y && key!=Game.hero.id){
                     Game.targets = Game.targets==""?key:"";
                     shouldSkip = true;
