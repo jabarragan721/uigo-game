@@ -1,0 +1,14 @@
+{
+  "short_name": "Uigo Game",
+  "name": "Uigo Game",
+  "icons": [
+    {
+      "src": "tilesets/blocked.png",
+      "sizes": "48x48",
+      "type": "image/png"
+    }
+  ],
+  "start_url": "mmorpg.html",
+  "display": "fullscreen",
+  "orientation": "landscape"
+}
