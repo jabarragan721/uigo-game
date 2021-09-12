@@ -18,7 +18,7 @@ maps.populate_tiles()
 async def register(ws,map,nombre):
     USERS[ws] = {"mapa":map,"id":str(ws)}
 
-async def encontrar(ws,new_map,WS):
+async def encontrar(ws,new_map,WS):#encontrar y eliminar un persona del mapa
     results=[]
     player_target = {}
     for map in maps.world:
@@ -61,7 +61,7 @@ async def update_position(map,dir,action,ws,step,moves):
         map["players"][ws]["step"] = step
         map["players"][ws]["moves"] = moves
 
-async def player_refresh(map,map_name,posX,posY,ws,desX,desY):
+async def player_refresh(map,map_name,posX,posY,ws,desX,desY):#Nuevo movimiento de jugador
     if ws in map["players"]:
         H = map["players"][ws]["H"]
         W = map["players"][ws]["W"]
@@ -142,7 +142,7 @@ async def new_attack(x1,y1,x2,y2,target,player,weapon):
             message = json.dumps(data)
             await user.send(message)
 
-async def start_player(map,map_name,player_name,body,hair,outfit,ws,fase):
+async def start_player(map,map_name,player_name,body,hair,outfit,ws,fase):#Parametros iniciales al conectarse
     map["players"][ws] = {}
     map["players"][ws]["name"] = player_name
     map["players"][ws]["body"] = body
@@ -285,7 +285,7 @@ async def unregister(ws):
                         await user.send(message)
                 break
 
-async def action(websocket, path):
+async def action(websocket, path): #Escuchar acciones del cliente
     try:
          async for message in websocket:
             data = json.loads(message)
@@ -355,7 +355,7 @@ async def action(websocket, path):
     finally:
         await unregister(websocket)
 
-
+#Para correr el server localmente habilidar la linea 359 y comentar la linea 360
 #start_server = websockets.serve(action, "192.168.0.4", 6789)
 start_server = websockets.serve(action, "", int(os.environ["PORT"]))
 asyncio.get_event_loop().run_until_complete(start_server)
