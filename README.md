@@ -5,4 +5,4 @@ Proyecto en desarrollo abierto a colaboración por parte de programadores extern
 Tecnologías usadas:
 - Vanilla JS
 - Pyhton
-- Websockets
+- Websockets (Libreria websockets-9.1)
