@@ -303,10 +303,10 @@
                   var outfit = Game.players[Game.hero.id]["outfit"];
                   Camera(Game.players[Game.hero.id]["posX"],Game.players[Game.hero.id]["posY"],Game.map.width,Game.map.height);
                   ctx_background.drawImage(floor,0,0,Game.map.width,Game.map.height,0,0,Game.map.width,Game.map.height);
-                  draw_hero(body,hair,outfit,Game.players[Game.hero.id]["name"],Game.players[Game.hero.id]["dir"],Game.players[Game.hero.id]["action"],Game.players[Game.hero.id]["frame"],Game.players[Game.hero.id]["posX"],Game.players[Game.hero.id]["posY"],
+                  DrawHero(body,hair,outfit,Game.players[Game.hero.id]["name"],Game.players[Game.hero.id]["dir"],Game.players[Game.hero.id]["action"],Game.players[Game.hero.id]["frame"],Game.players[Game.hero.id]["posX"],Game.players[Game.hero.id]["posY"],
                   Game.players[Game.hero.id]["H"],Game.players[Game.hero.id]["W"],"hero","N/A");
                   ctx_sky.drawImage(sky,0,0,Game.map.width,Game.map.height,0,0,Game.map.width,Game.map.height);
-                  draw_hp_bar(Game.players[Game.hero.id]["max_health"]);
+                  DrawHpBar(Game.players[Game.hero.id]["max_health"]);
                 }
                 const ProcessData = function proccess_data(info){
                   if(info["type"]=="new_player"){
