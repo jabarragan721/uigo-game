@@ -498,5 +498,20 @@ def calcular_ruta(hx,hy,hw,hh,dx,dy,map):
                         ruta["steps"][step]={"c":{"map":new_map,"conect_x":c_x,"conect_y":c_y}}
                         previous_move = "stop"
                         break
-    return ruta["steps"]
+    if len(ruta["steps"])<1 and free_place(dx,dy):
+        moves = [
+            colision(hero_x+10,hero_y,hero_h,hero_w),
+            colision(hero_x,hero_y-10,hero_h,hero_w),
+            colision(hero_x-10,hero_y,hero_h,hero_w),
+            colision(hero_x,hero_y+10,hero_h,hero_w)
+        ]
+        if moves[0]:
+            ruta["steps"][1]={"x":10}
+        elif moves[1]:
+            ruta["steps"][1]={"y":-10}
+        elif moves[2]:
+            ruta["steps"][1]={"x":-10}
+        elif moves[3]:
+            ruta["steps"][1]={"y":10}
     #print(ruta["steps"])
+    return ruta["steps"]
