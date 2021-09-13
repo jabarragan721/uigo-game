@@ -4,77 +4,26 @@
     	<meta charset="utf-8" />
       <link rel="manifest" href="manifest.json">
       <meta name="viewport" content="width=device-width, initial-scale=1">
-      <link rel="stylesheet" type="text/css" href="Styles.css?v=1.3.4" />
+      <link rel="stylesheet" type="text/css" href="Styles.css?v=1.4.0" />
       <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
       <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato">
       <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css">
       <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
       <script src="https://kit.fontawesome.com/4388a22358.js" crossorigin="anonymous"></script>
       <title>Uigo Game</title>
-      <style>
-        input[type="number"] {
-        -webkit-appearance: textfield;
-        -moz-appearance: textfield;
-        appearance: textfield;
-        }
-
-        input[type=number]::-webkit-inner-spin-button,
-        input[type=number]::-webkit-outer-spin-button {
-        -webkit-appearance: none;
-        }
-
-        .number-input {
-        border: 2px solid #ddd;
-        display: inline-flex;
-        }
-
-        .number-input,
-        .number-input * {
-        box-sizing: border-box;
-        }
-
-        .number-input button {
-        outline:none;
-        -webkit-appearance: none;
-        background-color: transparent;
-        border: none;
-        align-items: center;
-        justify-content: center;
-        width: 2rem;
-        height: 2rem;
-        cursor: pointer;
-        margin: 0;
-        position: relative;
-        }
-
-        .number-input button:before,
-        .number-input button:after {
-        display: inline-block;
-        position: absolute;
-        content: '';
-        width: 1rem;
-        height: 2px;
-        background-color: #212121;
-        transform: translate(-50%, -50%);
-        }
-        .number-input button.plus:after {
-        transform: translate(-50%, -50%) rotate(90deg);
-        }
-
-        .number-input input[type=number] {
-        font-family: sans-serif;
-        max-width: 5rem;
-        padding: .5rem;
-        border: solid #ddd;
-        border-width: 0 2px;
-        font-size: medium;
-        height: 2rem;
-        font-weight: bold;
-        text-align: center;
-        }
-      </style>
     </head>
     <body>
+      <div id="ModalAddress" class="modal-main">
+        <div class="modal-content2">
+        <div class="modal-header-login">
+          <span id="close_adr" class="close-login">&times;</span>
+        </div>
+        <div class="modal-body w3-center">
+          <p>¿Quieres entrar a esta tienda?</p>
+          <button class="button" type="button" name="gotostore" id="go_store">Ir a la Tienda</button>
+        </div>
+        </div>
+      </div>
       <div>
         <div id="div1">
           <canvas id="background_layer" style="left:0;top:0;z-index:0"></canvas>
@@ -131,7 +80,7 @@
               <br>
             </div>
             <button id="conectar" class="button">Entrar</button><br><br><br>
-            <div class="float1" id="chat_icon_container" style="height:20px;padding:1px;z-index:8">
+            <div class="float1" id="chat_icon_container" style="padding:1px;z-index:8">
               <span style="color:black;font-size:medium"><i id="chat_icon" onclick="hide_chat()" class="fas fa-arrow-circle-down"></i></span>
             </div>
             <div class="chat_history" style="font-size:small;padding-left:5px" id="chat_history">
@@ -161,8 +110,8 @@
             var count_items=0;
             var death=0;
             var handled = false;
-            //websocket = new WebSocket("wss://uigo-morpg.herokuapp.com/");
-            websocket = new WebSocket("ws://192.168.0.4:6789/");
+            websocket = new WebSocket("wss://uigo-morpg.herokuapp.com/");
+            //websocket = new WebSocket("ws://192.168.0.11:6789/");
             websocket.onerror=function(event){
                 alert("La conexión con el servidor ha fallado, intenta recargar la página");
             }
@@ -285,18 +234,25 @@
                 $("action_bar").style.visibility = "visible";
                 $("chat_icon_container").style.visibility = "visible";
                 $("button_action").style.visibility = "visible";
-                $("chat_icon_container").style.left = ($("text").offsetWidth -10) +"px";
-                $("chat_history").style.width = $("text").offsetWidth +"px";
-                websocket.send(JSON.stringify([
-                  {type: 'start'},
-                  {map: Game.map.name,
-                  player_name:$("player_nom").value,
-                  body:Game.hero.body,
-                  hair:Game.hero.hair,
-                  outfit:Game.hero.outfit,
-                  fase:0
-                }
-                ]));
+                var send = (
+                  function(){
+                     const conect = function send(){
+                        websocket.send(JSON.stringify([
+                        {type: 'start'},
+                        {map: Game.map.name,
+                        player_name:$("player_nom").value,
+                        body:Game.hero.body,
+                        hair:Game.hero.hair,
+                        outfit:Game.hero.outfit,
+                        fase:0}
+                        ]));
+                    }
+                    return {
+                      datos: conect,
+                    }
+                  }
+                )();
+                send.datos();
               }
             })
             function load_start_map(){
@@ -381,15 +337,25 @@
                 var target_2_y = Game.players[player]["posY"] + Game.players[player]["H"];
                 if(wx>target_1_x&&wx<target_2_x&&wy>target_1_y&&wy<target_2_y){
                   if(type == "hero"){
-                    websocket.send(JSON.stringify([
-                      {type: 'attack'},
-                      {map: Game.map.name,
-                        ws:Game.targets,
-                        weapon:Game.hero.equiped_weapon,
-                        Wx:wx,
-                        Wy:wy
+                    var send = (
+                      function(){
+                         const data = function send(){
+                           websocket.send(JSON.stringify([
+                             {type: 'attack'},
+                             {map: Game.map.name,
+                               ws:Game.targets,
+                               weapon:Game.hero.equiped_weapon,
+                               Wx:wx,
+                               Wy:wy
+                             }
+                           ]));
+                        }
+                        return {
+                          datos: data,
+                        }
                       }
-                    ]));
+                    )();
+                    send.datos();
                   }
                   delete Game.items_moving[weapon];
                 }
@@ -416,7 +382,6 @@
             }
             function move_elements(){
               Object.keys(Game.players).forEach(function(key){
-                //control de velocidad de cambio de frames en la animación del personaje
                 var speed = Game.players[key]["speed"];
                 Game.map.slow_speed++
                 if(Game.map.slow_speed>4){Game.map.slow_speed=0;}
@@ -429,23 +394,30 @@
                   }
                 }
                 if(Object.keys(Game.players[key]["ruta"]).length>0){
-                  //chequear si se ha completado la ruta de movimiento
                   if(Game.players[key]["step"] > Object.keys(Game.players[key]["ruta"]).length){
                     Game.players[key]["ruta"] = {};
                     if(key == Game.hero.id){
-                      websocket.send(JSON.stringify([
-                        {type: 'stop'},
-                        {map: Game.map.name,
+                      var send = (
+                        function(){
+                           const data = function send(){
+                             websocket.send(JSON.stringify([
+                               {type: 'stop'},
+                               {map: Game.map.name,
+                               }
+                             ]));
+                          }
+                          return {
+                            datos: data,
+                          }
                         }
-                      ]));
+                      )();
+                      send.datos();
                       Game.hero.pointer["draw"] = "no";
                       return
                     }
                   }
                   try {
-                    // chequear si el segmento de la ruta requiere moviemnto en X
                     if(Object.keys(Game.players[key]["ruta"][Game.players[key]["step"]])=="x"){
-                      //ajustar los pasos a recorrer para que sean divisible en la velocidad
                       var ajuste = Math.floor(Game.players[key]["ruta"][Game.players[key]["step"]].x/speed)*speed;
                       Game.players[key]["ruta"][Game.players[key]["step"]].x = ajuste==0?speed:ajuste;
                       var dir = Game.players[key]["ruta"][Game.players[key]["step"]].x<0?-speed:speed;
@@ -454,23 +426,31 @@
                       Game.players[key]["action"] = "walk";
                       Game.players[key]["dir"] = Game.players[key]["ruta"][Game.players[key]["step"]].x<0?"left":"right";
                       if(key == Game.hero.id){
-                        websocket.send(JSON.stringify([
-                          {type: 'new_position'},
-                          {map: Game.map.name,
-                          dir:Game.players[key]["dir"],
-                          action:"walk",
-                          step: Game.players[key]["step"],
-                          moves: Game.players[key]["moves"]
+                        var send = (
+                          function(){
+                             const data = function send(){
+                               websocket.send(JSON.stringify([
+                                 {type: 'new_position'},
+                                 {map: Game.map.name,
+                                 dir:Game.players[key]["dir"],
+                                 action:"walk",
+                                 step: Game.players[key]["step"],
+                                 moves: Game.players[key]["moves"]
+                                 }
+                               ]));
+                            }
+                            return {
+                              datos: data,
+                            }
                           }
-                        ]));
+                        )();
+                        send.datos();
                       }
-                      //chequear si se han completado los movimientos del segmento de la ruta
                       if(Game.players[key]["moves"]==Game.players[key]["ruta"][Game.players[key]["step"]].x){
                         Game.players[key]["step"]++;
                         Game.players[key]["moves"]=0;
                       }
                     }
-                    // chequear si el segmento de la ruta requiere moviemnto en Y
                     else if(Object.keys(Game.players[key]["ruta"][Game.players[key]["step"]])=="y"){
                       var ajuste = Math.floor(Game.players[key]["ruta"][Game.players[key]["step"]].y/speed)*speed;
                       Game.players[key]["ruta"][Game.players[key]["step"]].y = ajuste==0?speed:ajuste;
@@ -480,33 +460,52 @@
                       Game.players[key]["action"] = "walk";
                       Game.players[key]["dir"] = Game.players[key]["ruta"][Game.players[key]["step"]].y<0?"up":"down";
                       if(key == Game.hero.id){
-                        websocket.send(JSON.stringify([
-                          {type: 'new_position'},
-                          {map: Game.map.name,
-                          dir:Game.players[key]["dir"],
-                          action:"walk",
-                          step: Game.players[key]["step"],
-                          moves: Game.players[key]["moves"]
+                        var send = (
+                          function(){
+                             const data = function send(){
+                               websocket.send(JSON.stringify([
+                                 {type: 'new_position'},
+                                 {map: Game.map.name,
+                                 dir:Game.players[key]["dir"],
+                                 action:"walk",
+                                 step: Game.players[key]["step"],
+                                 moves: Game.players[key]["moves"]
+                                 }
+                               ]));
+                            }
+                            return {
+                              datos: data,
+                            }
                           }
-                        ]));
+                        )();
+                        send.datos();
                       }
                       if(Game.players[key]["moves"]==Game.players[key]["ruta"][Game.players[key]["step"]].y){
                         Game.players[key]["step"]++;
                         Game.players[key]["moves"]=0;
                       }
                     }
-                    // chequear si el segmento de la ruta es una conección a otro mapa
                     else if(Object.keys(Game.players[key]["ruta"][Game.players[key]["step"]])=="c"){
                       if(key == Game.hero.id){
-                        websocket.send(JSON.stringify([
-                          {type: 'new_map'},
-                          {
-                            actual_map: Game.map.name,
-                            new_map:Game.players[key]["ruta"][Game.players[key]["step"]]["c"]["map"],
-                            posX: Game.players[key]["ruta"][Game.players[key]["step"]]["c"]["conect_x"],
-                            posY: Game.players[key]["ruta"][Game.players[key]["step"]]["c"]["conect_y"]
+                        var send = (
+                          function(){
+                             const data = function send(){
+                               websocket.send(JSON.stringify([
+                                 {type: 'new_map'},
+                                 {
+                                   actual_map: Game.map.name,
+                                   new_map:Game.players[key]["ruta"][Game.players[key]["step"]]["c"]["map"],
+                                   posX: Game.players[key]["ruta"][Game.players[key]["step"]]["c"]["conect_x"],
+                                   posY: Game.players[key]["ruta"][Game.players[key]["step"]]["c"]["conect_y"]
+                                 }
+                               ]));
+                            }
+                            return {
+                              datos: data,
+                            }
                           }
-                        ]));
+                        )();
+                        send.datos();
                         Game.map.name=Game.players[key]["ruta"][Game.players[key]["step"]]["c"]["map"];
                         Game.players[Game.hero.id]["posX"]=Game.players[key]["ruta"][Game.players[key]["step"]]["c"]["conect_x"];
                         Game.players[Game.hero.id]["posY"]=Game.players[key]["ruta"][Game.players[key]["step"]]["c"]["conect_y"];
@@ -525,24 +524,23 @@
                   }
                 }
               });
-              //chequear si hay items en movimiento
               if(Object.keys(Game.items_moving).length>0){
                 var items = Game.items_moving;
                 Object.keys(items).forEach(function(key){
                   if(items[key]["animated"]){
-                    items[key]["frame_ratio"]++;//contador para reiniciar Frames de animación
+                    items[key]["frame_ratio"]++;
                     if(items[key]["frame_ratio"]>4){items[key]["frame_ratio"]=0;}
                     else if(items[key]["frame_ratio"]==2){
-                      items[key]["frame"]++;//cambiar el frame de animación del item
+                      items[key]["frame"]++;
                       if(items[key]["frame"]>2){items[key]["frame"]=0;}
                     }
                   }
-                  if(items[key]["alcance"]=="largo"){//establecer coordenadas de la ruta del item - las coordenadas se procesan en el server
+                  if(items[key]["alcance"]=="largo"){
                     items[key]["x"] += items[key]["dx"];
                     items[key]["y"] += items[key]["dy"];
                   }
                   else{
-                    if(items[key]["w_dir"]=="up"){//en ataques de corto alcance la posicion del arma se establece segun la posicion del jugador que ataca
+                    if(items[key]["w_dir"]=="up"){
                       items[key]["x"] = Game.players[items[key]["player"]]["posX"];
                       items[key]["y"] = Game.players[items[key]["player"]]["posY"]-items[key]["height"];
                     }
@@ -561,7 +559,7 @@
 
                   }
                   if((items[key]["x"]<0||items[key]["x"]>Game.map.width)||(items[key]["y"]<0||items[key]["y"]>Game.map.height)){
-                    delete items[key];//Eliminar proyectil al salir de mapa
+                    delete items[key];
                   }
                   else if(items[key]["player"]==Game.hero.id){
                       check_dammage(items[key]["x"]+items[key]["width"]/2,items[key]["y"]+items[key]["height"]/2,key,"hero");
@@ -571,11 +569,11 @@
                   }
                 });
               }
-              window.requestAnimationFrame(move_elements);
             }
             function send_msj(){
               if($("text").value!=""){
-                Game.players[Game.hero.id]["chat"] = $("text").value;
+                var msj = $("text").value.replace(/[&\/\\#,+()$~%.'":*?<>{}]/g, '');
+                Game.players[Game.hero.id]["chat"] = msj;
                 websocket.send(JSON.stringify([
                   {type: 'chat'},
                   {map: Game.map.name,
@@ -596,7 +594,7 @@
                 $("text").value="";
               }
             }
-            function proccess_data(info){//Funcion que procesa los datos recibidos del server segun el tipo de data
+            function proccess_data(info){
               if(info["type"]=="new_player"){
                 Game.players[info["data"]["Socket"]]=info["data"];
                 Object.keys(Game.players).forEach(function(key){
@@ -652,7 +650,17 @@
                   }
                 });
                 if(info["fase"]==0){
-                  window.requestAnimationFrame(move_elements);
+                  var Counter = (function() {
+                    var fotogramasPorSegundo = 40;
+                    function mover_objetos(){
+                      setInterval(function(){move_elements();},1000 / fotogramasPorSegundo);
+                    }
+                    return {
+                      move: mover_objetos,
+                      value: fotogramasPorSegundo
+                    }
+                  })();
+                  Counter.move();
                   window.requestAnimationFrame(update_canvas);
                 }
               }
@@ -732,7 +740,6 @@
                 }
               Game.camera.CamX=camX;
               Game.camera.CamY=camY;
-              //Trasladar los canvas segun el movimiento de la camara
               ctx_background.translate(-camX, -camY);
               ctx_sky.translate(-camX, -camY);
               ctx_players.translate(-camX, -camY);
@@ -747,15 +754,25 @@
                 Game.players[Game.hero.id]["moves"] = 0;
                 Game.hero.pointer["draw"] = "no";
               }
-              websocket.send(JSON.stringify([ //enviar la posición de destino al server
-                {type: 'new_state'},
-                {map: Game.map.name,
-                posX: Game.players[Game.hero.id]["posX"],
-                posY: Game.players[Game.hero.id]["posY"],
-                desX:x,
-                desY:y-16
+              var send = (
+                function(){
+                   const data = function send(){
+                     websocket.send(JSON.stringify([
+                       {type: 'new_state'},
+                       {map: Game.map.name,
+                       posX: Game.players[Game.hero.id]["posX"],
+                       posY: Game.players[Game.hero.id]["posY"],
+                       desX:x,
+                       desY:y-16
+                       }
+                     ]));
+                  }
+                  return {
+                    datos: data,
+                  }
                 }
-              ]));
+              )();
+              send.datos();
             }
             function update_canvas(){
               ctx_players.setTransform(1, 0, 0, 1, 0, 0);
@@ -809,16 +826,26 @@
             }
             function attack_player(){
               if(Game.targets!="" && Game.hero.equiped_weapon!="" && Game.players[Game.hero.id]["weapons"][Game.hero.equiped_weapon]["active"]==true){
-                websocket.send(JSON.stringify([
-                  {type: 'attack_action'},
-                  {target_id: Game.targets,
-                    px:Game.players[Game.hero.id]["posX"],
-                    py:Game.players[Game.hero.id]["posY"] + 8,
-                    tx:Game.players[Game.targets]["posX"],
-                    ty:Game.players[Game.targets]["posY"],
-                    weapon:Game.hero.equiped_weapon
+                var send = (
+                  function(){
+                     const data = function send(){
+                       websocket.send(JSON.stringify([
+                         {type: 'attack_action'},
+                         {target_id: Game.targets,
+                           px:Game.players[Game.hero.id]["posX"],
+                           py:Game.players[Game.hero.id]["posY"] + 8,
+                           tx:Game.players[Game.targets]["posX"],
+                           ty:Game.players[Game.targets]["posY"],
+                           weapon:Game.hero.equiped_weapon
+                         }
+                       ]));
+                    }
+                    return {
+                      datos: data,
+                    }
                   }
-                ]));
+                )();
+                send.datos();
                 Game.players[Game.hero.id]["weapons"][Game.hero.equiped_weapon]["active"]=false;
                 for (var i = 1 ; i<weapon_select.length+1;i++){
                   if($("A"+(i).toString()+"-Img").alt == Game.hero.equiped_weapon){
@@ -842,7 +869,7 @@
               var outfit_img = "outfit" + outfit.toString() + "_" + action + ".png";
               const cols= 24;
               const rows= action=="shoot"?2:1;
-              const chars={//cada item del array es la posicion de la imagen para cada frame de animación
+              const chars={
                 walk:{right:[1,2,3,4,5,6],up:[7,8,9,10,11,12],left:[13,14,15,16,17,18],down:[19,20,21,22,23,24],empty_pixels:0},
                 stop:{right:[1,2,3,4,5,6],up:[7,8,9,10,11,12],left:[13,14,15,16,17,18],down:[19,20,21,22,23,24],empty_pixels:0},
                 shoot:{right:[1,25,26,27],up:[7,28,29,30],left:[13,31,32,33],down:[19,34,35,36],empty_pixels:16},
@@ -922,7 +949,7 @@
                 ctx.drawImage(img,x,y,tile_w,tile_h,posx+((tile_w-w)/2),posy+((tile_h-h)/2),w,h);
               }
             }
-            function drawBubble(txt,x,y,type){ //Burbuja de chat
+            function drawBubble(txt,x,y,type){
               var ctx_target = ctx_sky;
               ctx_target.font = "12px Arial";
               var text = txt;
@@ -955,9 +982,19 @@
             }
             function check_hero_status(){
               if(Game.players[Game.hero.id]["health"]<1){
-                websocket.send(JSON.stringify([
-                  {type: 'dead_player'}
-                ]));
+                var send = (
+                  function(){
+                     const data = function send(){
+                       websocket.send(JSON.stringify([
+                         {type: 'dead_player'}
+                       ]));
+                    }
+                    return {
+                      datos: data,
+                    }
+                  }
+                )();
+                send.datos();
                 console.log("Te han derrotado");
                 Game.map.name = "map1";
                 Game.map.floor = "map1-floor.png";
@@ -1013,7 +1050,7 @@
                   var player_2_y = players[key]["posY"] + players[key]["H"];
                   if (shouldSkip) {
                     return;
-                  }//chequear if se ha seleccionado un jugador con el mouse o con el touch
+                  }
                   if(x < player_2_x && x > player_1_x && y < player_2_y && y > player_1_y && key!=Game.hero.id){
                     Game.targets = Game.targets==""?key:"";
                     shouldSkip = true;

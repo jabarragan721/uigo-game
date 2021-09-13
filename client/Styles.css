@@ -43,12 +43,14 @@ canvas {
 }
 #text{
   position: absolute;
+  width: 30%;
   bottom: 10px;
   left:10px;
 }
 .chat_history{
   position: absolute;
   overflow: auto;
+  width: 30%;
   height: 120px;
   bottom: 40px;
   background-color: rgba(159,159,159,0.7)
@@ -58,20 +60,21 @@ canvas {
   height: 20px;
   width: 20px;
   bottom: 145px;
-  left:180px;
+  left:29%;
 }
 .float2{
   position: absolute;
   height: 20px;
   width: 20px;
   bottom: 45px;
-  left:180px;
+  left:29%;
 }
 .chat_hidden{
   position: absolute;
   overflow: hidden;
   height: 20px;
   bottom: 40px;
+  width: 30%;
   background-color: rgba(159,159,159,0.7)
 }
 #action_bar{
@@ -152,4 +155,64 @@ canvas {
 .modal-body {
     padding: 5px;
     height: 100%;
+}
+input[type="number"] {
+-webkit-appearance: textfield;
+-moz-appearance: textfield;
+appearance: textfield;
+}
+
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button {
+-webkit-appearance: none;
+}
+
+.number-input {
+border: 2px solid #ddd;
+display: inline-flex;
+}
+
+.number-input,
+.number-input * {
+box-sizing: border-box;
+}
+
+.number-input button {
+outline:none;
+-webkit-appearance: none;
+background-color: transparent;
+border: none;
+align-items: center;
+justify-content: center;
+width: 2rem;
+height: 2rem;
+cursor: pointer;
+margin: 0;
+position: relative;
+}
+
+.number-input button:before,
+.number-input button:after {
+display: inline-block;
+position: absolute;
+content: '';
+width: 1rem;
+height: 2px;
+background-color: #212121;
+transform: translate(-50%, -50%);
+}
+.number-input button.plus:after {
+transform: translate(-50%, -50%) rotate(90deg);
+}
+
+.number-input input[type=number] {
+font-family: sans-serif;
+max-width: 5rem;
+padding: .5rem;
+border: solid #ddd;
+border-width: 0 2px;
+font-size: medium;
+height: 2rem;
+font-weight: bold;
+text-align: center;
 }

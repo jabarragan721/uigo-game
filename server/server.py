@@ -192,6 +192,8 @@ async def send_update(user_id,map_name):
 async def send_msj(user_id,player_name,map_name,chat):
     if USERS:
         for user in USERS:
+            translation_table = dict.fromkeys(map(ord, '<>/$@'), None)
+            chat = chat.translate(translation_table)
             if map_name == USERS[user]["mapa"]:
                 data = {
                     "data":chat,
