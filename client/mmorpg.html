@@ -13,17 +13,6 @@
       <title>Uigo Game</title>
     </head>
     <body>
-      <div id="ModalAddress" class="modal-main">
-        <div class="modal-content2">
-        <div class="modal-header-login">
-          <span id="close_adr" class="close-login">&times;</span>
-        </div>
-        <div class="modal-body w3-center">
-          <p>¿Quieres entrar a esta tienda?</p>
-          <button class="button" type="button" name="gotostore" id="go_store">Ir a la Tienda</button>
-        </div>
-        </div>
-      </div>
       <div>
         <div id="div1">
           <canvas id="background_layer" style="left:0;top:0;z-index:0"></canvas>
@@ -79,14 +68,14 @@
               </div>
               <br>
             </div>
-            <button id="conectar" class="button">Entrar</button><br><br><br>
+            <button id="conectar" onclick="game_data.connect()" class="button">Entrar</button><br><br><br>
             <div class="float1" id="chat_icon_container" style="padding:1px;z-index:8">
-              <span style="color:black;font-size:medium"><i id="chat_icon" onclick="hide_chat()" class="fas fa-arrow-circle-down"></i></span>
+              <span style="color:black;font-size:medium"><i id="chat_icon" onclick="game_data.hideChat()" class="fas fa-arrow-circle-down"></i></span>
             </div>
             <div class="chat_history" style="font-size:small;padding-left:5px" id="chat_history">
             </div>
             <input id="text" type="text"/>
-            <div class="w3-hide-large" onclick="attack_player();" id="button_action" style="width:60px;height:60px;position:absolute;right:70px;bottom:10px;">
+            <div class="w3-hide-large" onclick="game_data.attackPlayer();" id="button_action" style="width:60px;height:60px;position:absolute;right:70px;bottom:10px;">
               <img class="w3-img" src="ui_images/button_A.png"/>
             </div>
             <div id="action_bar" style="padding:4px">
@@ -101,252 +90,749 @@
       </div>
         <script>
             var $ =(id)=> document.getElementById(id);
-            $('conectar').disabled = true;
-            var ctx_background = $("background_layer").getContext('2d');
-            var ctx_players = $("players_layer").getContext('2d');
-            var ctx_items = $("items_layer").getContext('2d');
-            var ctx_hero = $("hero_layer").getContext('2d');
-            var ctx_sky = $("sky_layer").getContext('2d');
-            var count_items=0;
-            var death=0;
-            var handled = false;
-            websocket = new WebSocket("wss://uigo-morpg.herokuapp.com/");
-            //websocket = new WebSocket("ws://192.168.0.11:6789/");
-            websocket.onerror=function(event){
-                alert("La conexión con el servidor ha fallado, intenta recargar la página");
-            }
-            websocket.onopen=function(event){
-                $('conectar').disabled = false;
-            }
-            window.addEventListener("unload", ()=>{
-              websocket.close(1000);
-            });
-            var Game ={
-              maps_images:["map1-floor.png","map1-sky.png","map2-floor.png","map2-sky.png","map3-floor.png","map3-sky.png","pointer.png"],
-              charas_images:[
-                "body1_walk.png","body1_stop.png","body1_shoot.png","body2_walk.png","body2_stop.png","body2_shoot.png",
-                "body3_walk.png","body3_stop.png","body3_shoot.png","body4_walk.png","body4_stop.png","body4_shoot.png",
-                "body5_walk.png","body5_stop.png","body5_shoot.png","body6_walk.png","body6_stop.png","body6_shoot.png",
-                "body7_walk.png","body7_stop.png","body7_shoot.png","body8_walk.png","body8_stop.png","body8_shoot.png",
-                "body9_walk.png","body9_stop.png","body9_shoot.png",
-                "hair1_stop.png","hair1_walk.png","hair1_shoot.png","hair2_stop.png","hair2_walk.png","hair2_shoot.png",
-                "hair3_stop.png","hair3_walk.png","hair3_shoot.png","hair4_stop.png","hair4_walk.png","hair4_shoot.png",
-                "hair5_stop.png","hair5_walk.png","hair5_shoot.png","hair6_stop.png","hair6_walk.png","hair6_shoot.png",
-                "hair7_stop.png","hair7_walk.png","hair7_shoot.png",
-                "outfit1_stop.png","outfit1_walk.png","outfit1_shoot.png","outfit2_stop.png","outfit2_walk.png","outfit2_shoot.png",
-                "outfit3_stop.png","outfit3_walk.png","outfit3_shoot.png","outfit4_stop.png","outfit4_walk.png","outfit4_shoot.png",
-                "outfit5_stop.png","outfit5_walk.png","outfit5_shoot.png","outfit6_stop.png","outfit6_walk.png","outfit6_shoot.png",
-                "outfit7_stop.png","outfit7_walk.png","outfit7_shoot.png",
-              ],
-              weapons_images:[
-                "arrow_1.png","arrow_2.png","bow_1.png","sword_1.png","bullet_1.png",
-                "gun_1.png"
-              ],
-              map:{
-                name:"map1",
-                floor:"map1-floor.png",
-                sky:"map1-sky.png",
-                width:1024,
-                height:1024,
-                slow_speed: 0,
-                item_slow:0,
-                items_count:0,
-              },
-              camera:{
-                width:800,
-                height:600,
-                CamX:0,
-                CamY:0
-              },
-              hero:{
-                id:"",
-                body:1,
-                hair:1,
-                outfit:1,
-                frame:0,
-                attack_action:"",
-                pointer:{draw:"no",x:0,y:0},
-                equiped_weapon:""
-              },
-              items_moving:{},
-              players:{},
-              targets:"",
-            }
-            for (var i = 0;i< Game.charas_images.length;i++){
-              load_images(Game.charas_images[i],"chars");
-            }
-            for (var i = 0;i< Game.maps_images.length;i++){
-              load_images(Game.maps_images[i],"maps");
-            }
-            for (var i = 0;i< Game.weapons_images.length;i++){
-              load_images(Game.weapons_images[i],"weapons");
-            }
-            $("body_control").addEventListener("change",function(){
-              $("right_angle_body").src = "charas/body"+ $("body_control").value.toString() +"_stop.png";
-              $("back_angle_body").src = "charas/body"+ $("body_control").value.toString() +"_stop.png";
-              $("left_angle_body").src = "charas/body"+ $("body_control").value.toString() +"_stop.png";
-              $("front_angle_body").src = "charas/body"+ $("body_control").value.toString() +"_stop.png";
-              Game.hero.body = $("body_control").value;
-            });
-            $("hair_control").addEventListener("change",function(){
-              $("right_angle_hair").src = "charas/hair"+ $("hair_control").value.toString() +"_stop.png";
-              $("back_angle_hair").src = "charas/hair"+ $("hair_control").value.toString() +"_stop.png";
-              $("left_angle_hair").src = "charas/hair"+ $("hair_control").value.toString() +"_stop.png";
-              $("front_angle_hair").src = "charas/hair"+ $("hair_control").value.toString() +"_stop.png";
-              Game.hero.hair = $("hair_control").value;
-            });
-            $("outfit_control").addEventListener("change",function(){
-              $("right_angle_outfit").src = "charas/outfit"+ $("outfit_control").value.toString() +"_stop.png";
-              $("back_angle_outfit").src = "charas/outfit"+ $("outfit_control").value.toString() +"_stop.png";
-              $("left_angle_outfit").src = "charas/outfit"+ $("outfit_control").value.toString() +"_stop.png";
-              $("front_angle_outfit").src = "charas/outfit"+ $("outfit_control").value.toString() +"_stop.png";
-              Game.hero.outfit = $("outfit_control").value;
-            });
-            $("text").style.visibility = "hidden";
-            $("HP_bar").style.visibility = "hidden";
-            $("chat_icon_container").style.visibility = "hidden";
-            $("chat_history").style.visibility = "hidden";
-            $("action_bar").style.visibility = "hidden";
-            $("button_action").style.visibility = "hidden";
-            $("background_layer").width = Game.camera.width;
-            $("background_layer").height = Game.camera.height;
-            $("items_layer").width = Game.camera.width;
-            $("items_layer").height = Game.camera.height;
-            $("players_layer").width = Game.camera.width;
-            $("players_layer").height = Game.camera.height;
-            $("hero_layer").width = Game.camera.width;
-            $("hero_layer").height = Game.camera.height;
-            $("sky_layer").width = Game.camera.width;
-            $("sky_layer").height = Game.camera.height;
-            $("conectar").addEventListener("click",function(){
-              if($("player_nom").value==""){alert("Debes escirbir un nombre para tu personaje!");}
-              else{
-                $('start_screen').style.visibility = "hidden";
-                $("name").style.visibility = "hidden";
-                $("player_nom").style.visibility = "hidden";
-                $("ava").style.visibility = "hidden";
-                $("styles").style.visibility = "hidden";
-                $("conectar").style.visibility = "hidden";
-                $("text").style.visibility = "visible";
-                $("HP").style.visibility = "visible";
-                $("HP_bar").style.visibility = "visible";
-                $("chat_history").style.visibility = "visible";
-                $("action_bar").style.visibility = "visible";
-                $("chat_icon_container").style.visibility = "visible";
-                $("button_action").style.visibility = "visible";
-                var send = (
-                  function(){
-                     const conect = function send(){
-                        websocket.send(JSON.stringify([
-                        {type: 'start'},
-                        {map: Game.map.name,
-                        player_name:$("player_nom").value,
-                        body:Game.hero.body,
-                        hair:Game.hero.hair,
-                        outfit:Game.hero.outfit,
-                        fase:0}
-                        ]));
+            var game_data = (
+              function(){
+                var count_items=0;
+                var death=0;
+                var handled = false;
+                var refresh_rate = 50;
+                var weapon_select = document.getElementsByClassName("action");
+                var ctx_background = $("background_layer").getContext('2d');
+                var ctx_players = $("players_layer").getContext('2d');
+                var ctx_items = $("items_layer").getContext('2d');
+                var ctx_hero = $("hero_layer").getContext('2d');
+                var ctx_sky = $("sky_layer").getContext('2d');
+                var Game ={
+                  maps_images:["map1-floor.png","map1-sky.png","map2-floor.png","map2-sky.png","map3-floor.png","map3-sky.png","pointer.png"],
+                  charas_images:[
+                    "body1_walk.png","body1_stop.png","body1_shoot.png","body2_walk.png","body2_stop.png","body2_shoot.png",
+                    "body3_walk.png","body3_stop.png","body3_shoot.png","body4_walk.png","body4_stop.png","body4_shoot.png",
+                    "body5_walk.png","body5_stop.png","body5_shoot.png","body6_walk.png","body6_stop.png","body6_shoot.png",
+                    "body7_walk.png","body7_stop.png","body7_shoot.png","body8_walk.png","body8_stop.png","body8_shoot.png",
+                    "body9_walk.png","body9_stop.png","body9_shoot.png",
+                    "hair1_stop.png","hair1_walk.png","hair1_shoot.png","hair2_stop.png","hair2_walk.png","hair2_shoot.png",
+                    "hair3_stop.png","hair3_walk.png","hair3_shoot.png","hair4_stop.png","hair4_walk.png","hair4_shoot.png",
+                    "hair5_stop.png","hair5_walk.png","hair5_shoot.png","hair6_stop.png","hair6_walk.png","hair6_shoot.png",
+                    "hair7_stop.png","hair7_walk.png","hair7_shoot.png",
+                    "outfit1_stop.png","outfit1_walk.png","outfit1_shoot.png","outfit2_stop.png","outfit2_walk.png","outfit2_shoot.png",
+                    "outfit3_stop.png","outfit3_walk.png","outfit3_shoot.png","outfit4_stop.png","outfit4_walk.png","outfit4_shoot.png",
+                    "outfit5_stop.png","outfit5_walk.png","outfit5_shoot.png","outfit6_stop.png","outfit6_walk.png","outfit6_shoot.png",
+                    "outfit7_stop.png","outfit7_walk.png","outfit7_shoot.png",
+                  ],
+                  weapons_images:[
+                    "arrow_1.png","arrow_2.png","bow_1.png","sword_1.png","bullet_1.png",
+                    "gun_1.png"
+                  ],
+                  map:{
+                    name:"map1",
+                    floor:"map1-floor.png",
+                    sky:"map1-sky.png",
+                    width:1024,
+                    height:1024,
+                    slow_speed: 0,
+                    item_slow:0,
+                    items_count:0,
+                  },
+                  camera:{
+                    width:800,
+                    height:600,
+                    CamX:0,
+                    CamY:0
+                  },
+                  hero:{
+                    id:"",
+                    body:1,
+                    hair:1,
+                    outfit:1,
+                    frame:0,
+                    attack_action:"",
+                    pointer:{draw:"no",x:0,y:0},
+                    equiped_weapon:""
+                  },
+                  items_moving:{},
+                  players:{},
+                  targets:"",
+                }
+                const LoadGame = function load_content(){
+                  //websocket = new WebSocket("wss://uigo-morpg.herokuapp.com/");
+                  websocket = new WebSocket("ws://192.168.0.4:6789/");
+                  websocket.onerror=function(event){
+                      alert("La conexión con el servidor ha fallado, intenta recargar la página");
+                  }
+                  websocket.onopen=function(event){
+                      $('conectar').disabled = false;
+                  }
+                  websocket.onmessage = function (event) {
+                      data = JSON.parse(event.data);
+                      ProcessData(data);
+                  }
+                  $('conectar').disabled = true;
+                  window.addEventListener("unload", ()=>{
+                    websocket.close(1000);
+                  });
+                  for (var i = 0;i< Game.charas_images.length;i++){
+                    LoadImages(Game.charas_images[i],"chars");
+                  }
+                  for (var i = 0;i< Game.maps_images.length;i++){
+                    LoadImages(Game.maps_images[i],"maps");
+                  }
+                  for (var i = 0;i< Game.weapons_images.length;i++){
+                    LoadImages(Game.weapons_images[i],"weapons");
+                  }
+                  $("body_control").addEventListener("change",function(){
+                    $("right_angle_body").src = "charas/body"+ $("body_control").value.toString() +"_stop.png";
+                    $("back_angle_body").src = "charas/body"+ $("body_control").value.toString() +"_stop.png";
+                    $("left_angle_body").src = "charas/body"+ $("body_control").value.toString() +"_stop.png";
+                    $("front_angle_body").src = "charas/body"+ $("body_control").value.toString() +"_stop.png";
+                    Game.hero.body = $("body_control").value;
+                  });
+                  $("hair_control").addEventListener("change",function(){
+                    $("right_angle_hair").src = "charas/hair"+ $("hair_control").value.toString() +"_stop.png";
+                    $("back_angle_hair").src = "charas/hair"+ $("hair_control").value.toString() +"_stop.png";
+                    $("left_angle_hair").src = "charas/hair"+ $("hair_control").value.toString() +"_stop.png";
+                    $("front_angle_hair").src = "charas/hair"+ $("hair_control").value.toString() +"_stop.png";
+                    Game.hero.hair = $("hair_control").value;
+                  });
+                  $("outfit_control").addEventListener("change",function(){
+                    $("right_angle_outfit").src = "charas/outfit"+ $("outfit_control").value.toString() +"_stop.png";
+                    $("back_angle_outfit").src = "charas/outfit"+ $("outfit_control").value.toString() +"_stop.png";
+                    $("left_angle_outfit").src = "charas/outfit"+ $("outfit_control").value.toString() +"_stop.png";
+                    $("front_angle_outfit").src = "charas/outfit"+ $("outfit_control").value.toString() +"_stop.png";
+                    Game.hero.outfit = $("outfit_control").value;
+                  });
+                  $("text").style.visibility = "hidden";
+                  $("HP_bar").style.visibility = "hidden";
+                  $("chat_icon_container").style.visibility = "hidden";
+                  $("chat_history").style.visibility = "hidden";
+                  $("action_bar").style.visibility = "hidden";
+                  $("button_action").style.visibility = "hidden";
+                  $("background_layer").width = Game.camera.width;
+                  $("background_layer").height = Game.camera.height;
+                  $("items_layer").width = Game.camera.width;
+                  $("items_layer").height = Game.camera.height;
+                  $("players_layer").width = Game.camera.width;
+                  $("players_layer").height = Game.camera.height;
+                  $("hero_layer").width = Game.camera.width;
+                  $("hero_layer").height = Game.camera.height;
+                  $("sky_layer").width = Game.camera.width;
+                  $("sky_layer").height = Game.camera.height;
+                  for (var i = 0 ; i<weapon_select.length;i++){
+                    $("A1-Img").style.backgroundColor="green";
+                    $("A2-Img").style.backgroundColor="green";
+                    $("A3-Img").style.backgroundColor="green";
+                    $("A4-Img").style.backgroundColor="green";
+                    $("A5-Img").style.backgroundColor="green";
+                    weapon_select[i].addEventListener("click",function(){
+                      for (var i = 1 ; i<weapon_select.length+1;i++){
+                        $("A"+(i).toString()).style.border="none";
+                      }
+                      if($(this.id+"-Img").src!=""){
+                        $(this.id).style.backgroundColor="blue";
+                        $(this.id).style.border="1px solid black";
+                        Game.hero.equiped_weapon=$(this.id+"-Img").alt;
+                      }
+                    });
+                  }
+                  window.addEventListener( 'keydown', function( e ) {
+                      var key = e.which;
+                      if(key == 71 && Game.targets!=""){
+                        AttackPlayer();
+                      }
+                      else if(key==13){
+                        SendMsj();
+                      }
+                  });
+                  window.addEventListener( 'keyup', function( e ) {
+                      var key = e.which;
+                      if(key == 71 && Game.targets!=""){
+                        Game.hero.attack_action = "";
+                      }
+                  });
+                  $('sky_layer').addEventListener('click', function(e) {
+                    if(!handled){
+                        GetCursorPosition($('sky_layer'), e);
                     }
-                    return {
-                      datos: conect,
+                  });
+                  $('sky_layer').addEventListener('touchstart', function(e) {
+                      handled = true;
+                      GetCursorPosition($('sky_layer'), e);
+                  });
+                }
+                const Connect = function connect(){
+                  if($("player_nom").value==""){alert("Debes escirbir un nombre para tu personaje!");}
+                  else{
+                    $('start_screen').style.visibility = "hidden";
+                    $("name").style.visibility = "hidden";
+                    $("player_nom").style.visibility = "hidden";
+                    $("ava").style.visibility = "hidden";
+                    $("styles").style.visibility = "hidden";
+                    $("conectar").style.visibility = "hidden";
+                    $("text").style.visibility = "visible";
+                    $("HP").style.visibility = "visible";
+                    $("HP_bar").style.visibility = "visible";
+                    $("chat_history").style.visibility = "visible";
+                    $("action_bar").style.visibility = "visible";
+                    $("chat_icon_container").style.visibility = "visible";
+                    $("button_action").style.visibility = "visible";
+                    var send = (
+                      function(){
+                         const conect = function send(){
+                            websocket.send(JSON.stringify([
+                            {type: 'start'},
+                            {map: Game.map.name,
+                            player_name:$("player_nom").value,
+                            body:Game.hero.body,
+                            hair:Game.hero.hair,
+                            outfit:Game.hero.outfit,
+                            fase:0}
+                            ]));
+                        }
+                        return {
+                          datos: conect,
+                        }
+                      }
+                    )();
+                    send.datos();
+                  }
+                }
+                const LoadStartMap = function load_start_map(){
+                  floor = $(Game.map.floor);
+                  sky = $(Game.map.sky);
+                  var body = Game.players[Game.hero.id]["body"];
+                  var hair = Game.players[Game.hero.id]["hair"];
+                  var outfit = Game.players[Game.hero.id]["outfit"];
+                  Camera(Game.players[Game.hero.id]["posX"],Game.players[Game.hero.id]["posY"],Game.map.width,Game.map.height);
+                  ctx_background.drawImage(floor,0,0,Game.map.width,Game.map.height,0,0,Game.map.width,Game.map.height);
+                  draw_hero(body,hair,outfit,Game.players[Game.hero.id]["name"],Game.players[Game.hero.id]["dir"],Game.players[Game.hero.id]["action"],Game.players[Game.hero.id]["frame"],Game.players[Game.hero.id]["posX"],Game.players[Game.hero.id]["posY"],
+                  Game.players[Game.hero.id]["H"],Game.players[Game.hero.id]["W"],"hero","N/A");
+                  ctx_sky.drawImage(sky,0,0,Game.map.width,Game.map.height,0,0,Game.map.width,Game.map.height);
+                  draw_hp_bar(Game.players[Game.hero.id]["max_health"]);
+                }
+                const ProcessData = function proccess_data(info){
+                  if(info["type"]=="new_player"){
+                    Game.players[info["data"]["Socket"]]=info["data"];
+                    Object.keys(Game.players).forEach(function(key){
+                      if(key!=Game.hero.id){
+                        var body = Game.players[key]["body"];
+                        var hair = Game.players[key]["hair"];
+                        var outfit = Game.players[key]["outfit"];
+                        DrawHero(body,hair,outfit,Game.players[key]["name"],Game.players[key]["dir"],Game.players[key]["action"],Game.players[key]["frame"],Game.players[key]["posX"],Game.players[key]["posY"],
+                        Game.players[key]["H"],Game.players[key]["W"],"player",key,Game.players[key]["health"],Game.players[key]["max_health"]);
+                      }
+                    });
+                  }
+                  else if(info["type"]=="new_move"){
+                    var id = info["data"]["Socket"];
+                    Game.players[id] = info["data"];
+                    if(id == Game.hero.id && Object.keys(Game.players[id]["ruta"]).length>0){
+                      Game.hero.pointer["draw"] = "yes";
+                    }
+                    if(Object.keys(Game.players[id]["ruta"]).length<1){
+                      Game.players[id]["ruta"] = {};
+                      Game.players[id]["moves"] = 0;
+                      Game.players[id]["step"] = 1;
                     }
                   }
-                )();
-                send.datos();
-              }
-            })
-            function load_start_map(){
-              floor = $(Game.map.floor);
-              sky = $(Game.map.sky);
-              var body = Game.players[Game.hero.id]["body"];
-              var hair = Game.players[Game.hero.id]["hair"];
-              var outfit = Game.players[Game.hero.id]["outfit"];
-              Camera(Game.players[Game.hero.id]["posX"],Game.players[Game.hero.id]["posY"],Game.map.width,Game.map.height);
-              ctx_background.drawImage(floor,0,0,Game.map.width,Game.map.height,0,0,Game.map.width,Game.map.height);
-              draw_hero(body,hair,outfit,Game.players[Game.hero.id]["name"],Game.players[Game.hero.id]["dir"],Game.players[Game.hero.id]["action"],Game.players[Game.hero.id]["frame"],Game.players[Game.hero.id]["posX"],Game.players[Game.hero.id]["posY"],
-              Game.players[Game.hero.id]["H"],Game.players[Game.hero.id]["W"],"hero","N/A");
-              ctx_sky.drawImage(sky,0,0,Game.map.width,Game.map.height,0,0,Game.map.width,Game.map.height);
-              draw_hp_bar(Game.players[Game.hero.id]["max_health"]);
-            }
-            var weapon_select = document.getElementsByClassName("action");
-            for (var i = 0 ; i<weapon_select.length;i++){
-              $("A1-Img").style.backgroundColor="green";
-              $("A2-Img").style.backgroundColor="green";
-              $("A3-Img").style.backgroundColor="green";
-              $("A4-Img").style.backgroundColor="green";
-              $("A5-Img").style.backgroundColor="green";
-              weapon_select[i].addEventListener("click",function(){
-                for (var i = 1 ; i<weapon_select.length+1;i++){
-                  $("A"+(i).toString()).style.border="none";
+                  else if(info["type"]=="start"){
+                    Game.items_moving={};
+                    Game.hero.id = info["id"];
+                    Game.players=info["data"]["players"];
+                    Game.map.floor=info["data"]["layers"]["floor"];
+                    Game.map.sky=info["data"]["layers"]["sky"];
+                    Game.map.width=info["data"]["cols"]*info["data"]["t_size"];
+                    Game.map.height=info["data"]["rows"]*info["data"]["t_size"];
+                    var weapon_counter = 1;
+                    Object.keys(Game.players[Game.hero.id]["weapons"]).forEach(function(key){
+                      var weapon_img = Game.players[Game.hero.id]["weapons"][key]["sprite"];
+                      $('A'+weapon_counter.toString()+"-Img").src="weapons/"+weapon_img;
+                      $('A'+weapon_counter.toString()+"-Img").alt=Game.players[Game.hero.id]["weapons"][key]["name"];
+                      weapon_counter++;
+                    });
+                    ctx_players.setTransform(1, 0, 0, 1, 0, 0);
+                    ctx_players.clearRect(0,0,Game.camera.width,Game.camera.width);
+                    Camera(Game.players[Game.hero.id]["posX"],Game.players[Game.hero.id]["posY"],Game.map.width,Game.map.height);
+                    Object.keys(Game.players).forEach(function(key){
+                      if(key!=Game.hero.id){
+                        var body = Game.players[key]["body"];
+                        var hair = Game.players[key]["hair"];
+                        var outfit = Game.players[key]["outfit"];
+                        DrawHero(body,hair,outfit,Game.players[key]["name"],Game.players[key]["dir"],Game.players[key]["action"],Game.players[key]["frame"],Game.players[key]["posX"],Game.players[key]["posY"],
+                        Game.players[key]["H"],Game.players[key]["W"],"player",key,Game.players[key]["health"],Game.players[key]["max_health"]);
+                      }
+                      else{
+                        this.LoadStartMap;
+                      }
+                    });
+                    if(info["fase"]==0){
+                      var Counter = (function() {
+                        function mover_objetos(){
+                          setInterval(function(){MoveElements();},1000 / refresh_rate);
+                        }
+                        return {
+                          move: mover_objetos,
+                        }
+                      })();
+                      Counter.move();
+                      window.requestAnimationFrame(UpdateCanvas);
+                    }
+                  }
+                  else if(info["type"]=="player_dammaged"){
+                    Game.players[info["data"]["player"]]["health"] = info["data"]["health"];
+                    CheckHeroStatus();
+                    if(Game.targets!=""){
+                      CheckTargetStatus();
+                    }
+                  }
+                  else if(info["type"]=="new_attack"){
+                    var shoot = setTimeout(function(){
+                      Game.items_moving[count_items]=info["data"];
+                    },200);
+                    const weapon_id = count_items;
+                    count_items++;
+                    Game.players[info["data"]["player"]]["ruta"] = {};
+                    Game.players[info["data"]["player"]]["moves"] = 0;
+                    Game.players[info["data"]["player"]]["step"] = 1;
+                    Game.players[info["data"]["player"]]["frame"] = 0;
+                    Game.players[info["data"]["player"]]["dir"] = info["data"]["dir"];
+                    Game.players[info["data"]["player"]]["action"] = "shoot";
+                    Game.hero.pointer["draw"] = "no";
+                  }
+                  else if(info["type"]=="player_out"){
+                    delete Game.players[info["data"]];
+                  }
+                  else if(info["type"]=="new_map"){
+                    Game.items_moving={};
+                    Game.targets="";
+                    Game.players=info["data"]["players"];
+                    Game.map.floor=info["data"]["layers"]["floor"];
+                    Game.map.sky=info["data"]["layers"]["sky"];
+                    Game.map.width=info["data"]["cols"]*info["data"]["t_size"];
+                    Game.map.height=info["data"]["rows"]*info["data"]["t_size"];
+                    ctx_players.setTransform(1, 0, 0, 1, 0, 0);
+                    ctx_players.clearRect(0,0,Game.camera.width,Game.camera.width);
+                    Camera(Game.players[Game.hero.id]["posX"],Game.players[Game.hero.id]["posY"],Game.map.width,Game.map.height);
+                    Object.keys(Game.players).forEach(function(key){
+                      if(key!=Game.hero.id){
+                        var body = Game.players[key]["body"];
+                        var hair = Game.players[key]["hair"];
+                        var outfit = Game.players[key]["outfit"];
+                        DrawHero(body,hair,outfit,Game.players[key]["name"],Game.players[key]["dir"],Game.players[key]["action"],Game.players[key]["frame"],Game.players[key]["posX"],Game.players[key]["posY"],
+                        Game.players[key]["H"],Game.players[key]["W"],"player",key,Game.players[key]["health"],Game.players[key]["max_health"]);
+                      }
+                      else{
+                        Game.hero.id = key;
+                        LoadStartMap();
+                      }
+                    });
+                  }
+                  else if(info["type"]=="new_msj"){
+                    Game.players[info["player"]]["chat"] = info["data"];
+                    if(Game.hero.id == info["player"]){
+                      Game.players[Game.hero.id]["chat"] = info["data"];
+                    }
+                    else{
+                      if(info["data"]!=""){
+                        $("chat_history").innerHTML +="<span style='color:blue'>"+info["player_name"]+": "+ info["data"] + "</span><br>";
+                        $("chat_history").scrollTop =$("chat_history").scrollHeight;
+                      }
+                    }
+                  }
                 }
-                if($(this.id+"-Img").src!=""){
-                  $(this.id).style.backgroundColor="blue";
-                  $(this.id).style.border="1px solid black";
-                  Game.hero.equiped_weapon=$(this.id+"-Img").alt;
+                const UpdateCanvas = function update_canvas(){
+                  ctx_players.setTransform(1, 0, 0, 1, 0, 0);
+                  ctx_hero.setTransform(1, 0, 0, 1, 0, 0);
+                  ctx_sky.setTransform(1, 0, 0, 1, 0, 0);
+                  ctx_background.setTransform(1, 0, 0, 1, 0, 0);
+                  ctx_players.clearRect(0,0,Game.camera.width,Game.camera.width);
+                  ctx_hero.clearRect(0,0,Game.camera.width,Game.camera.width);
+                  ctx_sky.clearRect(0,0,Game.camera.width,Game.camera.width);
+                  Camera(Game.players[Game.hero.id]["posX"],Game.players[Game.hero.id]["posY"],Game.map.width,Game.map.height);
+                  ctx_background.drawImage($(Game.map.floor),0,0,Game.map.width,Game.map.height);
+                  ctx_sky.drawImage($(Game.map.sky),0,0,Game.map.width,Game.map.height,0,0,Game.map.width,Game.map.height);
+                  if(Object.keys(Game.items_moving).length>0){
+                    var items = Game.items_moving;
+                    Object.keys(items).forEach(function(key){
+                      DrawWeapon($(items[key]["bullet"]),items[key]["w_dir"],items[key]["frame"],items[key]["x"],items[key]["y"],items[key]["height"],items[key]["width"],items[key]["animated"],ctx_hero);
+                    });
+                  }
+                  Object.keys(Game.players).forEach(function(key){
+                    if(key!=Game.hero.id){
+                      var body = Game.players[key]["body"];
+                      var hair = Game.players[key]["hair"];
+                      var outfit = Game.players[key]["outfit"];
+                      DrawHero(body,hair,outfit,Game.players[key]["name"],Game.players[key]["dir"],Game.players[key]["action"],Game.players[key]["frame"],Game.players[key]["posX"],Game.players[key]["posY"],
+                      Game.players[key]["H"],Game.players[key]["W"],"player",key,Game.players[key]["health"],Game.players[key]["max_health"]);
+                      if(Game.players[key]["chat"]!=""){
+                        DrawBubble(Game.players[key]["chat"],
+                        Game.players[key]["posX"]+Game.players[key]["W"],
+                        Game.players[key]["posY"]+Game.players[key]["H"],"player");
+                      }
+                    }
+                    else{
+                      $("HP").innerHTML = Game.players[Game.hero.id]["health"];
+                      DrawHpBar(Game.players[Game.hero.id]["health"]);
+                      if(Game.hero.pointer["draw"] == "yes"){
+                        ctx_hero.drawImage($("pointer.png"),Game.hero.pointer["x"],Game.hero.pointer["y"]);
+                      }
+                      var body = Game.players[key]["body"];
+                      var hair = Game.players[key]["hair"];
+                      var outfit = Game.players[key]["outfit"];
+                      DrawHero(body,hair,outfit,Game.players[key]["name"],Game.players[key]["dir"],Game.players[key]["action"],Game.players[key]["frame"],Game.players[key]["posX"],Game.players[key]["posY"],
+                      Game.players[key]["H"],Game.players[key]["W"],"hero",key,Game.players[key]["health"],Game.players[key]["max_health"]);
+                      if(Game.players[Game.hero.id]["chat"]!=""){
+                        DrawBubble(Game.players[key]["chat"],
+                        Game.players[key]["posX"]+Game.players[key]["W"],
+                        Game.players[key]["posY"]+Game.players[key]["H"],"hero");
+                      }
+                    }
+                  });
+                  window.requestAnimationFrame(update_canvas);
                 }
-              });
-            }
-            function load_images(file_name,type){
-              var img = document.createElement("img");
-              if(type=="maps"){img.src="maps/"+file_name;}
-              else if(type=="chars"){img.src="charas/"+file_name+"?id=1.0.0";}
-              else if(type=="weapons"){img.src="weapons/"+file_name;}
-              img.id=file_name;
-              img.hidden=true;
-              document.getElementsByTagName("BODY")[0].appendChild(img);
-            }
-            window.addEventListener( 'keydown', function( e ) {
-                var key = e.which;
-                if(key == 71 && Game.targets!=""){
-                  attack_player();
+                const MoveElements = function move_elements(){
+                  Object.keys(Game.players).forEach(function(key){
+                    var speed = Game.players[key]["speed"];
+                    Game.map.slow_speed++
+                    if(Game.map.slow_speed>4){Game.map.slow_speed=0;}
+                    else if(Game.map.slow_speed == 2){
+                      Game.players[key]["frame"]++;
+                      if(Game.players[key]["frame"]>5 && Game.players[key]["action"]!="shoot"){Game.players[key]["frame"]=0;}
+                      else if(Game.players[key]["frame"]>3){
+                        Game.players[key]["frame"]=0;
+                        Game.players[key]["action"] = "stop";
+                      }
+                    }
+                    if(Object.keys(Game.players[key]["ruta"]).length>0){
+                      if(Game.players[key]["step"] > Object.keys(Game.players[key]["ruta"]).length){
+                        Game.players[key]["ruta"] = {};
+                        if(key == Game.hero.id){
+                          var send = (
+                            function(){
+                               const data = function send(){
+                                 websocket.send(JSON.stringify([
+                                   {type: 'stop'},
+                                   {map: Game.map.name,
+                                   }
+                                 ]));
+                              }
+                              return {
+                                datos: data,
+                              }
+                            }
+                          )();
+                          send.datos();
+                          Game.hero.pointer["draw"] = "no";
+                          return
+                        }
+                      }
+                      try {
+                        if(Object.keys(Game.players[key]["ruta"][Game.players[key]["step"]])=="x"){
+                          var ajuste = Math.floor(Game.players[key]["ruta"][Game.players[key]["step"]].x/speed)*speed;
+                          Game.players[key]["ruta"][Game.players[key]["step"]].x = ajuste==0?speed:ajuste;
+                          var dir = Game.players[key]["ruta"][Game.players[key]["step"]].x<0?-speed:speed;
+                          Game.players[key]["posX"] += dir;
+                          Game.players[key]["moves"] += dir;
+                          Game.players[key]["action"] = "walk";
+                          Game.players[key]["dir"] = Game.players[key]["ruta"][Game.players[key]["step"]].x<0?"left":"right";
+                          if(key == Game.hero.id){
+                            var send = (
+                              function(){
+                                 const data = function send(){
+                                   websocket.send(JSON.stringify([
+                                     {type: 'new_position'},
+                                     {map: Game.map.name,
+                                     dir:Game.players[key]["dir"],
+                                     action:"walk",
+                                     step: Game.players[key]["step"],
+                                     moves: Game.players[key]["moves"]
+                                     }
+                                   ]));
+                                }
+                                return {
+                                  datos: data,
+                                }
+                              }
+                            )();
+                            send.datos();
+                          }
+                          if(Game.players[key]["moves"]==Game.players[key]["ruta"][Game.players[key]["step"]].x){
+                            Game.players[key]["step"]++;
+                            Game.players[key]["moves"]=0;
+                          }
+                        }
+                        else if(Object.keys(Game.players[key]["ruta"][Game.players[key]["step"]])=="y"){
+                          var ajuste = Math.floor(Game.players[key]["ruta"][Game.players[key]["step"]].y/speed)*speed;
+                          Game.players[key]["ruta"][Game.players[key]["step"]].y = ajuste==0?speed:ajuste;
+                          var dir = Game.players[key]["ruta"][Game.players[key]["step"]].y<0?-speed:speed;
+                          Game.players[key]["posY"] += dir;
+                          Game.players[key]["moves"] += dir;
+                          Game.players[key]["action"] = "walk";
+                          Game.players[key]["dir"] = Game.players[key]["ruta"][Game.players[key]["step"]].y<0?"up":"down";
+                          if(key == Game.hero.id){
+                            var send = (
+                              function(){
+                                 const data = function send(){
+                                   websocket.send(JSON.stringify([
+                                     {type: 'new_position'},
+                                     {map: Game.map.name,
+                                     dir:Game.players[key]["dir"],
+                                     action:"walk",
+                                     step: Game.players[key]["step"],
+                                     moves: Game.players[key]["moves"]
+                                     }
+                                   ]));
+                                }
+                                return {
+                                  datos: data,
+                                }
+                              }
+                            )();
+                            send.datos();
+                          }
+                          if(Game.players[key]["moves"]==Game.players[key]["ruta"][Game.players[key]["step"]].y){
+                            Game.players[key]["step"]++;
+                            Game.players[key]["moves"]=0;
+                          }
+                        }
+                        else if(Object.keys(Game.players[key]["ruta"][Game.players[key]["step"]])=="c"){
+                          if(key == Game.hero.id){
+                            var send = (
+                              function(){
+                                 const data = function send(){
+                                   websocket.send(JSON.stringify([
+                                     {type: 'new_map'},
+                                     {
+                                       actual_map: Game.map.name,
+                                       new_map:Game.players[key]["ruta"][Game.players[key]["step"]]["c"]["map"],
+                                       posX: Game.players[key]["ruta"][Game.players[key]["step"]]["c"]["conect_x"],
+                                       posY: Game.players[key]["ruta"][Game.players[key]["step"]]["c"]["conect_y"]
+                                     }
+                                   ]));
+                                }
+                                return {
+                                  datos: data,
+                                }
+                              }
+                            )();
+                            send.datos();
+                            Game.map.name=Game.players[key]["ruta"][Game.players[key]["step"]]["c"]["map"];
+                            Game.players[Game.hero.id]["posX"]=Game.players[key]["ruta"][Game.players[key]["step"]]["c"]["conect_x"];
+                            Game.players[Game.hero.id]["posY"]=Game.players[key]["ruta"][Game.players[key]["step"]]["c"]["conect_y"];
+                            Game.players[Game.hero.id]["action"]="stop";
+                            Game.players[key]["ruta"] = {};
+                            return
+                          }
+                          else{
+                            Game.players[key]["step"]++;
+                            Game.players[key]["moves"]=0;
+                          }
+                        };
+                      } catch (e) {
+                      } finally {
+                        return
+                      }
+                    }
+                  });
+                  if(Object.keys(Game.items_moving).length>0){
+                    var items = Game.items_moving;
+                    Object.keys(items).forEach(function(key){
+                      if(items[key]["animated"]){
+                        items[key]["frame_ratio"]++;
+                        if(items[key]["frame_ratio"]>4){items[key]["frame_ratio"]=0;}
+                        else if(items[key]["frame_ratio"]==2){
+                          items[key]["frame"]++;
+                          if(items[key]["frame"]>2){items[key]["frame"]=0;}
+                        }
+                      }
+                      if(items[key]["alcance"]=="largo"){
+                        items[key]["x"] += items[key]["dx"];
+                        items[key]["y"] += items[key]["dy"];
+                      }
+                      else{
+                        if(items[key]["w_dir"]=="up"){
+                          items[key]["x"] = Game.players[items[key]["player"]]["posX"];
+                          items[key]["y"] = Game.players[items[key]["player"]]["posY"]-items[key]["height"];
+                        }
+                        else if(items[key]["w_dir"]=="down"){
+                          items[key]["x"] = Game.players[items[key]["player"]]["posX"];
+                          items[key]["y"] = Game.players[items[key]["player"]]["posY"]+items[key]["height"]-5;
+                        }
+                        else if(items[key]["w_dir"]=="left"){
+                          items[key]["x"] = Game.players[items[key]["player"]]["posX"]-items[key]["width"]+5;
+                          items[key]["y"] = Game.players[items[key]["player"]]["posY"];
+                        }
+                        else if(items[key]["w_dir"]=="right"){
+                          items[key]["x"] = Game.players[items[key]["player"]]["posX"]+items[key]["width"]-5;
+                          items[key]["y"] = Game.players[items[key]["player"]]["posY"];
+                        }
+
+                      }
+                      if((items[key]["x"]<0||items[key]["x"]>Game.map.width)||(items[key]["y"]<0||items[key]["y"]>Game.map.height)){
+                        delete items[key];
+                      }
+                      else if(items[key]["player"]==Game.hero.id){
+                          CheckDamage(items[key]["x"]+items[key]["width"]/2,items[key]["y"]+items[key]["height"]/2,key,"hero");
+                      }
+                      else{
+                        CheckDamage(items[key]["x"]+items[key]["width"]/2,items[key]["y"]+items[key]["height"]/2,key,"target");
+                      }
+                    });
+                  }
                 }
-                else if(key==13){
-                  send_msj();
+                const HideChat = function hide_chat(){
+                  $('chat_icon_container').classList.remove("float1");
+                  $('chat_icon_container').classList.add("float2");
+                  $('chat_history').classList.remove("chat_history");
+                  $('chat_history').classList.add("chat_hidden");
+                  $('chat_icon').classList.remove("fa-arrow-circle-down");
+                  $('chat_icon').classList.add("fa-arrow-circle-up");
+                  $('chat_icon').onclick=function(){ShowChat();};
                 }
-            });
-            window.addEventListener( 'keyup', function( e ) {
-                var key = e.which;
-                if(key == 71 && Game.targets!=""){
-                  Game.hero.attack_action = "";
+                const ShowChat = function show_chat(){
+                  $('chat_icon_container').classList.remove("float2");
+                  $('chat_icon_container').classList.add("float1");
+                  $('chat_history').classList.remove("chat_hidden");
+                  $('chat_history').classList.add("chat_history");
+                  $('chat_icon').classList.remove("fa-arrow-circle-up");
+                  $('chat_icon').classList.add("fa-arrow-circle-down");
+                  $('chat_icon').onclick=function(){HideChat();};
                 }
-            });
-            function hide_chat(){
-              $('chat_icon_container').classList.remove("float1");
-              $('chat_icon_container').classList.add("float2");
-              $('chat_history').classList.remove("chat_history");
-              $('chat_history').classList.add("chat_hidden");
-              $('chat_icon').classList.remove("fa-arrow-circle-down");
-              $('chat_icon').classList.add("fa-arrow-circle-up");
-              $('chat_icon').onclick=function(){show_chat();};
-            }
-            function show_chat(){
-              $('chat_icon_container').classList.remove("float2");
-              $('chat_icon_container').classList.add("float1");
-              $('chat_history').classList.remove("chat_hidden");
-              $('chat_history').classList.add("chat_history");
-              $('chat_icon').classList.remove("fa-arrow-circle-up");
-              $('chat_icon').classList.add("fa-arrow-circle-down");
-              $('chat_icon').onclick=function(){hide_chat();};
-            }
-            function check_dammage(wx,wy,weapon,type){
-              var player = type=="hero"?Game.targets:Game.hero.id;
-              if (player!=""){
-                var target_1_x = Game.players[player]["posX"];
-                var target_2_x = Game.players[player]["posX"] + Game.players[player]["W"];
-                var target_1_y = Game.players[player]["posY"];
-                var target_2_y = Game.players[player]["posY"] + Game.players[player]["H"];
-                if(wx>target_1_x&&wx<target_2_x&&wy>target_1_y&&wy<target_2_y){
-                  if(type == "hero"){
+                const CheckDamage = function check_dammage(wx,wy,weapon,type){
+                  var player = type=="hero"?Game.targets:Game.hero.id;
+                  if (player!=""){
+                    var target_1_x = Game.players[player]["posX"];
+                    var target_2_x = Game.players[player]["posX"] + Game.players[player]["W"];
+                    var target_1_y = Game.players[player]["posY"];
+                    var target_2_y = Game.players[player]["posY"] + Game.players[player]["H"];
+                    if(wx>target_1_x&&wx<target_2_x&&wy>target_1_y&&wy<target_2_y){
+                      if(type == "hero"){
+                        var send = (
+                          function(){
+                             const data = function send(){
+                               websocket.send(JSON.stringify([
+                                 {type: 'attack'},
+                                 {map: Game.map.name,
+                                   ws:Game.targets,
+                                   weapon:Game.hero.equiped_weapon,
+                                   Wx:wx,
+                                   Wy:wy
+                                 }
+                               ]));
+                            }
+                            return {
+                              datos: data,
+                            }
+                          }
+                        )();
+                        send.datos();
+                      }
+                      delete Game.items_moving[weapon];
+                    }
+                  }
+                }
+                const DrawHpBar = function draw_hp_bar(health){
+                  var hp_bar = 150;
+                  var hp_W = (health*hp_bar)/Game.players[Game.hero.id]["max_health"];
+                  $('HP').style.width = hp_W + "px";
+                  $('HP').style.height = 20 + "px";
+                  $('HP').innerHTML = health<0?0:health;
+                  if(hp_W>(hp_bar/2)){
+                    $('HP').style.backgroundColor = "green";
+                    $('HP').style.color = "white";
+                  }
+                  else if(hp_W<(hp_bar/2) && hp_W>(hp_bar/4)){
+                    $('HP').style.backgroundColor = "orange";
+                    $('HP').style.color = "black";
+                  }
+                  else{
+                    $('HP').style.backgroundColor = "red";
+                    $('HP').style.color = "white";
+                  }
+                }
+                const SendMsj = function send_msj(){
+                  if($("text").value!=""){
+                    var msj = $("text").value.replace(/[&\/\\#,+()$~%.'":*?<>{}]/g, '');
+                    Game.players[Game.hero.id]["chat"] = msj;
+                    websocket.send(JSON.stringify([
+                      {type: 'chat'},
+                      {map: Game.map.name,
+                      player_name:Game.players[Game.hero.id]["name"],
+                      chat:Game.players[Game.hero.id]["chat"]}
+                    ]));
+                    $("chat_history").innerHTML +="<span style='color:green'>Yo: "+ Game.players[Game.hero.id]["chat"] + "</span><br>";
+                    $("chat_history").scrollTop = $("chat_history").scrollHeight;
+                    var msj_time = setTimeout(function(){
+                      Game.players[Game.hero.id]["chat"] = "";
+                      websocket.send(JSON.stringify([
+                        {type: 'chat'},
+                        {map: Game.map.name,
+                        player_name:Game.players[Game.hero.id]["name"],
+                        chat:Game.players[Game.hero.id]["chat"]}
+                      ]));
+                    },3000);
+                    $("text").value="";
+                  }
+                }
+                const Camera = function Camera(xpos,ypos,mapW,mapH) {
+                    var camX=cam_limits(xpos-Game.camera.width/2+Game.players[Game.hero.id]["W"]/2,0,mapW-Game.camera.width)||0;
+                    var camY=cam_limits(ypos-Game.camera.height/2+Game.players[Game.hero.id]["H"]/2,0,mapH-Game.camera.height)||0;
+                    function cam_limits(coord,min,max){
+                      if (coord < min) {
+                        return min
+                      } else if (coord > max) {
+                        return max
+                      } else {
+                        return coord
+                      }
+                    }
+                  Game.camera.CamX=camX;
+                  Game.camera.CamY=camY;
+                  ctx_background.translate(-camX, -camY);
+                  ctx_sky.translate(-camX, -camY);
+                  ctx_players.translate(-camX, -camY);
+                  ctx_hero.translate(-camX, -camY);
+                  ctx_items.translate(-camX, -camY);
+                }
+                const SelectTile = function select_tile(x,y){
+                  //console.log("Hx:"+Game.players[Game.hero.id]["posX"]+" Hy:"+Game.players[Game.hero.id]["posY"]+" Dx:"+x+" Dy:"+y);
+                  if(Object.keys(Game.players[Game.hero.id]["ruta"]).length>0){
+                    Game.players[Game.hero.id]["ruta"] = {};
+                    Game.players[Game.hero.id]["step"] = 1;
+                    Game.players[Game.hero.id]["moves"] = 0;
+                    Game.hero.pointer["draw"] = "no";
+                  }
+                  var send = (
+                    function(){
+                       const data = function send(){
+                         websocket.send(JSON.stringify([
+                           {type: 'new_state'},
+                           {map: Game.map.name,
+                           posX: Game.players[Game.hero.id]["posX"],
+                           posY: Game.players[Game.hero.id]["posY"],
+                           desX:x,
+                           desY:y-16
+                           }
+                         ]));
+                      }
+                      return {
+                        datos: data,
+                      }
+                    }
+                  )();
+                  send.datos();
+                }
+                const AttackPlayer = function attack_player(){
+                  if(Game.targets!="" && Game.hero.equiped_weapon!="" && Game.players[Game.hero.id]["weapons"][Game.hero.equiped_weapon]["active"]==true){
                     var send = (
                       function(){
                          const data = function send(){
                            websocket.send(JSON.stringify([
-                             {type: 'attack'},
-                             {map: Game.map.name,
-                               ws:Game.targets,
-                               weapon:Game.hero.equiped_weapon,
-                               Wx:wx,
-                               Wy:wy
+                             {type: 'attack_action'},
+                             {target_id: Game.targets,
+                               px:Game.players[Game.hero.id]["posX"],
+                               py:Game.players[Game.hero.id]["posY"] + 8,
+                               tx:Game.players[Game.targets]["posX"],
+                               ty:Game.players[Game.targets]["posY"],
+                               weapon:Game.hero.equiped_weapon
                              }
                            ]));
                         }
@@ -356,725 +842,241 @@
                       }
                     )();
                     send.datos();
-                  }
-                  delete Game.items_moving[weapon];
-                }
-              }
-            }
-            function draw_hp_bar(health){
-              var hp_bar = 150;
-              var hp_W = (health*hp_bar)/Game.players[Game.hero.id]["max_health"];
-              $('HP').style.width = hp_W + "px";
-              $('HP').style.height = 20 + "px";
-              $('HP').innerHTML = health<0?0:health;
-              if(hp_W>(hp_bar/2)){
-                $('HP').style.backgroundColor = "green";
-                $('HP').style.color = "white";
-              }
-              else if(hp_W<(hp_bar/2) && hp_W>(hp_bar/4)){
-                $('HP').style.backgroundColor = "orange";
-                $('HP').style.color = "black";
-              }
-              else{
-                $('HP').style.backgroundColor = "red";
-                $('HP').style.color = "white";
-              }
-            }
-            function move_elements(){
-              Object.keys(Game.players).forEach(function(key){
-                var speed = Game.players[key]["speed"];
-                Game.map.slow_speed++
-                if(Game.map.slow_speed>4){Game.map.slow_speed=0;}
-                else if(Game.map.slow_speed == 2){
-                  Game.players[key]["frame"]++;
-                  if(Game.players[key]["frame"]>5 && Game.players[key]["action"]!="shoot"){Game.players[key]["frame"]=0;}
-                  else if(Game.players[key]["frame"]>3){
-                    Game.players[key]["frame"]=0;
-                    Game.players[key]["action"] = "stop";
-                  }
-                }
-                if(Object.keys(Game.players[key]["ruta"]).length>0){
-                  if(Game.players[key]["step"] > Object.keys(Game.players[key]["ruta"]).length){
-                    Game.players[key]["ruta"] = {};
-                    if(key == Game.hero.id){
-                      var send = (
-                        function(){
-                           const data = function send(){
-                             websocket.send(JSON.stringify([
-                               {type: 'stop'},
-                               {map: Game.map.name,
-                               }
-                             ]));
-                          }
-                          return {
-                            datos: data,
-                          }
+                    Game.players[Game.hero.id]["weapons"][Game.hero.equiped_weapon]["active"]=false;
+                    for (var i = 1 ; i<weapon_select.length+1;i++){
+                      if($("A"+(i).toString()+"-Img").alt == Game.hero.equiped_weapon){
+                        $("A"+(i).toString()+"-Img").classList.add("w3-grayscale-max");
+                      }
+                    }
+                    const weapon = Game.hero.equiped_weapon;
+                    var inactive_weapon = setTimeout(function(){
+                      Game.players[Game.hero.id]["weapons"][weapon]["active"]=true;
+                      for (var i = 1 ; i<weapon_select.length+1;i++){
+                        if($("A"+(i).toString()+"-Img").alt == weapon){
+                          $("A"+(i).toString()+"-Img").classList.remove("w3-grayscale-max");
                         }
-                      )();
-                      send.datos();
-                      Game.hero.pointer["draw"] = "no";
-                      return
-                    }
-                  }
-                  try {
-                    if(Object.keys(Game.players[key]["ruta"][Game.players[key]["step"]])=="x"){
-                      var ajuste = Math.floor(Game.players[key]["ruta"][Game.players[key]["step"]].x/speed)*speed;
-                      Game.players[key]["ruta"][Game.players[key]["step"]].x = ajuste==0?speed:ajuste;
-                      var dir = Game.players[key]["ruta"][Game.players[key]["step"]].x<0?-speed:speed;
-                      Game.players[key]["posX"] += dir;
-                      Game.players[key]["moves"] += dir;
-                      Game.players[key]["action"] = "walk";
-                      Game.players[key]["dir"] = Game.players[key]["ruta"][Game.players[key]["step"]].x<0?"left":"right";
-                      if(key == Game.hero.id){
-                        var send = (
-                          function(){
-                             const data = function send(){
-                               websocket.send(JSON.stringify([
-                                 {type: 'new_position'},
-                                 {map: Game.map.name,
-                                 dir:Game.players[key]["dir"],
-                                 action:"walk",
-                                 step: Game.players[key]["step"],
-                                 moves: Game.players[key]["moves"]
-                                 }
-                               ]));
-                            }
-                            return {
-                              datos: data,
-                            }
-                          }
-                        )();
-                        send.datos();
                       }
-                      if(Game.players[key]["moves"]==Game.players[key]["ruta"][Game.players[key]["step"]].x){
-                        Game.players[key]["step"]++;
-                        Game.players[key]["moves"]=0;
-                      }
-                    }
-                    else if(Object.keys(Game.players[key]["ruta"][Game.players[key]["step"]])=="y"){
-                      var ajuste = Math.floor(Game.players[key]["ruta"][Game.players[key]["step"]].y/speed)*speed;
-                      Game.players[key]["ruta"][Game.players[key]["step"]].y = ajuste==0?speed:ajuste;
-                      var dir = Game.players[key]["ruta"][Game.players[key]["step"]].y<0?-speed:speed;
-                      Game.players[key]["posY"] += dir;
-                      Game.players[key]["moves"] += dir;
-                      Game.players[key]["action"] = "walk";
-                      Game.players[key]["dir"] = Game.players[key]["ruta"][Game.players[key]["step"]].y<0?"up":"down";
-                      if(key == Game.hero.id){
-                        var send = (
-                          function(){
-                             const data = function send(){
-                               websocket.send(JSON.stringify([
-                                 {type: 'new_position'},
-                                 {map: Game.map.name,
-                                 dir:Game.players[key]["dir"],
-                                 action:"walk",
-                                 step: Game.players[key]["step"],
-                                 moves: Game.players[key]["moves"]
-                                 }
-                               ]));
-                            }
-                            return {
-                              datos: data,
-                            }
-                          }
-                        )();
-                        send.datos();
-                      }
-                      if(Game.players[key]["moves"]==Game.players[key]["ruta"][Game.players[key]["step"]].y){
-                        Game.players[key]["step"]++;
-                        Game.players[key]["moves"]=0;
-                      }
-                    }
-                    else if(Object.keys(Game.players[key]["ruta"][Game.players[key]["step"]])=="c"){
-                      if(key == Game.hero.id){
-                        var send = (
-                          function(){
-                             const data = function send(){
-                               websocket.send(JSON.stringify([
-                                 {type: 'new_map'},
-                                 {
-                                   actual_map: Game.map.name,
-                                   new_map:Game.players[key]["ruta"][Game.players[key]["step"]]["c"]["map"],
-                                   posX: Game.players[key]["ruta"][Game.players[key]["step"]]["c"]["conect_x"],
-                                   posY: Game.players[key]["ruta"][Game.players[key]["step"]]["c"]["conect_y"]
-                                 }
-                               ]));
-                            }
-                            return {
-                              datos: data,
-                            }
-                          }
-                        )();
-                        send.datos();
-                        Game.map.name=Game.players[key]["ruta"][Game.players[key]["step"]]["c"]["map"];
-                        Game.players[Game.hero.id]["posX"]=Game.players[key]["ruta"][Game.players[key]["step"]]["c"]["conect_x"];
-                        Game.players[Game.hero.id]["posY"]=Game.players[key]["ruta"][Game.players[key]["step"]]["c"]["conect_y"];
-                        Game.players[Game.hero.id]["action"]="stop";
-                        Game.players[key]["ruta"] = {};
-                        return
-                      }
-                      else{
-                        Game.players[key]["step"]++;
-                        Game.players[key]["moves"]=0;
-                      }
-                    };
-                  } catch (e) {
-                  } finally {
-                    return
+                    },Game.players[Game.hero.id]["weapons"][Game.hero.equiped_weapon]["time_span"] * 1000);
                   }
                 }
-              });
-              if(Object.keys(Game.items_moving).length>0){
-                var items = Game.items_moving;
-                Object.keys(items).forEach(function(key){
-                  if(items[key]["animated"]){
-                    items[key]["frame_ratio"]++;
-                    if(items[key]["frame_ratio"]>4){items[key]["frame_ratio"]=0;}
-                    else if(items[key]["frame_ratio"]==2){
-                      items[key]["frame"]++;
-                      if(items[key]["frame"]>2){items[key]["frame"]=0;}
+                const DrawHero = function draw_hero(body,hair,outfit,name,dir,action,frame,posx,posy,h,w,type,id,health,max_health){
+                  var body_img = "body" + body.toString() + "_" + action + ".png";
+                  var hair_img = "hair" + hair.toString() + "_" + action + ".png";
+                  var outfit_img = "outfit" + outfit.toString() + "_" + action + ".png";
+                  const cols= 24;
+                  const rows= action=="shoot"?2:1;
+                  const chars={
+                    walk:{right:[1,2,3,4,5,6],up:[7,8,9,10,11,12],left:[13,14,15,16,17,18],down:[19,20,21,22,23,24],empty_pixels:0},
+                    stop:{right:[1,2,3,4,5,6],up:[7,8,9,10,11,12],left:[13,14,15,16,17,18],down:[19,20,21,22,23,24],empty_pixels:0},
+                    shoot:{right:[1,25,26,27],up:[7,28,29,30],left:[13,31,32,33],down:[19,34,35,36],empty_pixels:16},
+                  }
+                  function getTile(Action,dir){
+                    if(dir=="down"){return chars[Action].down[frame];}
+                    else if(dir=="up"){return chars[Action].up[frame];}
+                    else if(dir=="left"){return chars[Action].left[frame];}
+                    else if(dir=="right"){return chars[Action].right[frame];}
+                  }
+                  for(var r = 0; r<chars[action][dir].length; r++){
+                    var tile = getTile(action,dir);
+                    var x = ((tile-1)*w) -((w*cols)*Math.floor((tile-1)/cols));
+                    var y = ((Math.floor((tile-1)/cols))*h) + (chars[action]["empty_pixels"]*((Math.floor((tile-1)/cols))+1));
+                    if(type=="hero"){
+                      ctx_hero.drawImage($(body_img),x,y,w,h,posx,posy,w,h);
+                      ctx_hero.drawImage($(hair_img),x,y,w,h,posx,posy,w,h);
+                      ctx_hero.drawImage($(outfit_img),x,y,w,h,posx,posy,w,h);
+                    }
+                    else{
+                      ctx_players.drawImage($(body_img),x,y,w,h,posx,posy,w,h);
+                      ctx_players.drawImage($(hair_img),x,y,w,h,posx,posy,w,h);
+                      ctx_players.drawImage($(outfit_img),x,y,w,h,posx,posy,w,h);
                     }
                   }
-                  if(items[key]["alcance"]=="largo"){
-                    items[key]["x"] += items[key]["dx"];
-                    items[key]["y"] += items[key]["dy"];
+                  if(Game.targets.includes(id)){
+                    var hp_W = (health*w)/max_health;
+                    ctx_players.beginPath();
+                    ctx_players.lineWidth = "1";
+                    ctx_players.rect(posx,posy-5,hp_W,6);
+                    ctx_players.strokeStyle = "black";
+                    if(hp_W>(w/2)){
+                      ctx_players.fillStyle = "green";
+                    }
+                    else if(hp_W<(w/2) && hp_W>(w/4)){
+                      ctx_players.fillStyle = "orange";
+                    }
+                    else{
+                      ctx_players.fillStyle = "red";
+                    }
+                    ctx_players.closePath();
+                    ctx_players.fill();
+                    ctx_players.stroke();
+                  }
+                  if(type=="hero"){
+                    ctx_hero.font = "12px Arial";
+                    var name_w = ctx_hero.measureText(name).width;
+                    var n_x= (name_w-w)/2;
+                    ctx_players.fillStyle = "black";
+                    ctx_hero.fillText(name,posx-n_x,posy-10);
                   }
                   else{
-                    if(items[key]["w_dir"]=="up"){
-                      items[key]["x"] = Game.players[items[key]["player"]]["posX"];
-                      items[key]["y"] = Game.players[items[key]["player"]]["posY"]-items[key]["height"];
+                    ctx_players.font = "12px Arial";
+                    var name_w = ctx_players.measureText(name).width;
+                    var n_x= (name_w-w)/2;
+                    ctx_players.fillStyle = "black";
+                    ctx_players.fillText(name,posx-n_x,posy-10);
+                  }
+                }
+                const DrawWeapon = function draw_weapon(img,dir,frame,posx,posy,h,w,animated,ctx){
+                  let cols= animated?3:1;
+                  let rows= animated?4:1;
+                  let tile_w = 32;
+                  let tile_h=32;
+                  let draw_frame = animated?frame:0;
+                  let weapon=animated?{"moves":{down:[1,2,3],left:[4,5,6],right:[7,8,9],up:[10,11,12]}}:{"moves":{down:[1],left:[1],right:[1],up:[1]}}
+                  function getTile(arma,dir){
+                    if(dir=="down"){return weapon[arma].down[draw_frame];}
+                    else if(dir=="up"){return weapon[arma].up[draw_frame];}
+                    else if(dir=="left"){return weapon[arma].left[draw_frame];}
+                    else if(dir=="right"){return weapon[arma].right[draw_frame];}
+                  }
+                  for(var r=0;r<weapon["moves"][dir].length;r++){
+                    var tile = getTile("moves",dir);
+                    var x = ((tile-1)*tile_w) -((tile_w*cols)*Math.floor((tile-1)/cols));
+                    var y = (Math.floor((tile-1)/cols))*tile_h;
+                    ctx.drawImage(img,x,y,tile_w,tile_h,posx+((tile_w-w)/2),posy+((tile_h-h)/2),w,h);
+                  }
+                }
+                const DrawBubble = function drawBubble(txt,x,y,type){
+                  var ctx_target = ctx_sky;
+                  ctx_target.font = "12px Arial";
+                  var text = txt;
+                  var h = 20;
+                  var radius = 10;
+                  var w = ctx_target.measureText(text).width +10;
+                  xt= 5;
+                  if(w<60){w=60; xt=30-(ctx_target.measureText(text).width/2);}
+                  var r = x + w;
+                  var b = y + h;
+                  ctx_target.beginPath();
+                  ctx_target.strokeStyle="black";
+                  ctx_target.lineWidth="2";
+                  ctx_target.moveTo(x+radius, y);
+                  ctx_target.lineTo(x+radius/2, y-10);
+                  ctx_target.lineTo(x+radius * 2, y);
+                  ctx_target.lineTo(r-radius, y);
+                  ctx_target.quadraticCurveTo(r, y, r, y+radius);
+                  ctx_target.lineTo(r, y+h-radius);
+                  ctx_target.quadraticCurveTo(r, b, r-radius, b);
+                  ctx_target.lineTo(x+radius, b);
+                  ctx_target.quadraticCurveTo(x, b, x, b-radius);
+                  ctx_target.lineTo(x, y+radius);
+                  ctx_target.quadraticCurveTo(x, y, x+radius, y);
+                  ctx_target.stroke();
+                  ctx_target.fillStyle = '#FFFFFF';
+                  ctx_target.fill();
+                  ctx_target.fillStyle = "#000000";
+                  ctx_target.fillText(text,x+xt,y+(h/2)+3);
+                }
+                const CheckHeroStatus = function check_hero_status(){
+                  if(Game.players[Game.hero.id]["health"]<1){
+                    var send = (
+                      function(){
+                         const data = function send(){
+                           websocket.send(JSON.stringify([
+                             {type: 'dead_player'}
+                           ]));
+                        }
+                        return {
+                          datos: data,
+                        }
+                      }
+                    )();
+                    send.datos();
+                    console.log("Te han derrotado");
+                    Game.map.name = "map1";
+                    Game.map.floor = "map1-floor.png";
+                    Game.map.sky = "map1-sky.png";
+                    websocket.send(JSON.stringify([
+                      {type: 'start'},
+                      {map: Game.map.name,
+                      player_name:$("player_nom").value,
+                      sprite: Game.hero.sprite,
+                      fase:1,
+                      body:Game.hero.body,
+                      hair:Game.hero.hair,
+                      outfit:Game.hero.outfit,
                     }
-                    else if(items[key]["w_dir"]=="down"){
-                      items[key]["x"] = Game.players[items[key]["player"]]["posX"];
-                      items[key]["y"] = Game.players[items[key]["player"]]["posY"]+items[key]["height"]-5;
+                    ]));
+                  }
+                }
+                const CheckTargetStatus = function check_target_status(){
+                  if(Game.players[Game.targets]['health']<1){
+                    console.log("Has Ganado");
+                    Game.targets="";
+                  }
+                }
+                const LoadImages = function load_images(file_name,type){
+                  var img = document.createElement("img");
+                  if(type=="maps"){img.src="maps/"+file_name;}
+                  else if(type=="chars"){img.src="charas/"+file_name+"?id=1.0.0";}
+                  else if(type=="weapons"){img.src="weapons/"+file_name;}
+                  img.id=file_name;
+                  img.hidden=true;
+                  document.getElementsByTagName("BODY")[0].appendChild(img);
+                }
+                const GetCursorPosition = function getCursorPosition(canvas, event) {
+                    const rect = canvas.getBoundingClientRect();
+                    var Nx = event.clientX - rect.left;
+                    var Ny = event.clientY - rect.top;
+                    if(event.type == 'touchstart'){
+                        var evt = (typeof event.originalEvent === 'undefined') ? event : event.originalEvent;
+                        var touch = evt.touches[0] || evt.changedTouches[0];
+                        Nx = touch.pageX - rect.left;
+                        Ny = touch.pageY - rect.top;
                     }
-                    else if(items[key]["w_dir"]=="left"){
-                      items[key]["x"] = Game.players[items[key]["player"]]["posX"]-items[key]["width"]+5;
-                      items[key]["y"] = Game.players[items[key]["player"]]["posY"];
-                    }
-                    else if(items[key]["w_dir"]=="right"){
-                      items[key]["x"] = Game.players[items[key]["player"]]["posX"]+items[key]["width"]-5;
-                      items[key]["y"] = Game.players[items[key]["player"]]["posY"];
-                    }
+                    const margenX = rect.width - Game.camera.width;
+                    const factorX = margenX==0?rect.width:rect.width/margenX;
+                    const margenY = rect.height - Game.camera.height;
+                    const factorY = margenY==0?rect.height1:rect.height/margenY;
 
-                  }
-                  if((items[key]["x"]<0||items[key]["x"]>Game.map.width)||(items[key]["y"]<0||items[key]["y"]>Game.map.height)){
-                    delete items[key];
-                  }
-                  else if(items[key]["player"]==Game.hero.id){
-                      check_dammage(items[key]["x"]+items[key]["width"]/2,items[key]["y"]+items[key]["height"]/2,key,"hero");
-                  }
-                  else{
-                    check_dammage(items[key]["x"]+items[key]["width"]/2,items[key]["y"]+items[key]["height"]/2,key,"target");
-                  }
-                });
-              }
-            }
-            function send_msj(){
-              if($("text").value!=""){
-                var msj = $("text").value.replace(/[&\/\\#,+()$~%.'":*?<>{}]/g, '');
-                Game.players[Game.hero.id]["chat"] = msj;
-                websocket.send(JSON.stringify([
-                  {type: 'chat'},
-                  {map: Game.map.name,
-                  player_name:Game.players[Game.hero.id]["name"],
-                  chat:Game.players[Game.hero.id]["chat"]}
-                ]));
-                $("chat_history").innerHTML +="<span style='color:green'>Yo: "+ Game.players[Game.hero.id]["chat"] + "</span><br>";
-                $("chat_history").scrollTop = $("chat_history").scrollHeight;
-                var msj_time = setTimeout(function(){
-                  Game.players[Game.hero.id]["chat"] = "";
-                  websocket.send(JSON.stringify([
-                    {type: 'chat'},
-                    {map: Game.map.name,
-                    player_name:Game.players[Game.hero.id]["name"],
-                    chat:Game.players[Game.hero.id]["chat"]}
-                  ]));
-                },3000);
-                $("text").value="";
-              }
-            }
-            function proccess_data(info){
-              if(info["type"]=="new_player"){
-                Game.players[info["data"]["Socket"]]=info["data"];
-                Object.keys(Game.players).forEach(function(key){
-                  if(key!=Game.hero.id){
-                    var body = Game.players[key]["body"];
-                    var hair = Game.players[key]["hair"];
-                    var outfit = Game.players[key]["outfit"];
-                    draw_hero(body,hair,outfit,Game.players[key]["name"],Game.players[key]["dir"],Game.players[key]["action"],Game.players[key]["frame"],Game.players[key]["posX"],Game.players[key]["posY"],
-                    Game.players[key]["H"],Game.players[key]["W"],"player",key,Game.players[key]["health"],Game.players[key]["max_health"]);
-                  }
-                });
-              }
-              else if(info["type"]=="new_move"){
-                var id = info["data"]["Socket"];
-                Game.players[id] = info["data"];
-                if(id == Game.hero.id && Object.keys(Game.players[id]["ruta"]).length>0){
-                  Game.hero.pointer["draw"] = "yes";
-                }
-                if(Object.keys(Game.players[id]["ruta"]).length<1){
-                  Game.players[id]["ruta"] = {};
-                  Game.players[id]["moves"] = 0;
-                  Game.players[id]["step"] = 1;
-                }
-              }
-              else if(info["type"]=="start"){
-                Game.items_moving={};
-                Game.hero.id = info["id"];
-                Game.players=info["data"]["players"];
-                Game.map.floor=info["data"]["layers"]["floor"];
-                Game.map.sky=info["data"]["layers"]["sky"];
-                Game.map.width=info["data"]["cols"]*info["data"]["t_size"];
-                Game.map.height=info["data"]["rows"]*info["data"]["t_size"];
-                var weapon_counter = 1;
-                Object.keys(Game.players[Game.hero.id]["weapons"]).forEach(function(key){
-                  var weapon_img = Game.players[Game.hero.id]["weapons"][key]["sprite"];
-                  $('A'+weapon_counter.toString()+"-Img").src="weapons/"+weapon_img;
-                  $('A'+weapon_counter.toString()+"-Img").alt=Game.players[Game.hero.id]["weapons"][key]["name"];
-                  weapon_counter++;
-                });
-                ctx_players.setTransform(1, 0, 0, 1, 0, 0);
-                ctx_players.clearRect(0,0,Game.camera.width,Game.camera.width);
-                Camera(Game.players[Game.hero.id]["posX"],Game.players[Game.hero.id]["posY"],Game.map.width,Game.map.height);
-                Object.keys(Game.players).forEach(function(key){
-                  if(key!=Game.hero.id){
-                    var body = Game.players[key]["body"];
-                    var hair = Game.players[key]["hair"];
-                    var outfit = Game.players[key]["outfit"];
-                    draw_hero(body,hair,outfit,Game.players[key]["name"],Game.players[key]["dir"],Game.players[key]["action"],Game.players[key]["frame"],Game.players[key]["posX"],Game.players[key]["posY"],
-                    Game.players[key]["H"],Game.players[key]["W"],"player",key,Game.players[key]["health"],Game.players[key]["max_health"]);
-                  }
-                  else{
-                    load_start_map();
-                  }
-                });
-                if(info["fase"]==0){
-                  var Counter = (function() {
-                    var fotogramasPorSegundo = 40;
-                    function mover_objetos(){
-                      setInterval(function(){move_elements();},1000 / fotogramasPorSegundo);
+                    var x = margenX>=0?(Nx+Game.camera.CamX)-(Nx/factorX):Nx+Game.camera.CamX+(Nx/Math.abs(factorX));
+                    var y = margenY>=0?(Ny+Game.camera.CamY)-(Ny/factorY):Ny+Game.camera.CamY+(Ny/Math.abs(factorY));
+                    //console.log("x: " + x + " y: " + y + " Nx: "+Nx + " Ny: "+Ny);
+                    const players = Game.players;
+                    let shouldSkip = false;
+                    let continue_cheking = true;
+                    Object.keys(players).forEach(function(key){
+                      var player_1_x = players[key]["posX"];
+                      var player_2_x = players[key]["posX"] + players[key]["W"];
+                      var player_1_y = players[key]["posY"];
+                      var player_2_y = players[key]["posY"] + players[key]["H"];
+                      if (shouldSkip) {
+                        return;
+                      }
+                      if(x < player_2_x && x > player_1_x && y < player_2_y && y > player_1_y && key!=Game.hero.id){
+                        Game.targets = Game.targets==""?key:"";
+                        shouldSkip = true;
+                        continue_cheking = false;
+                        return;
+                      }
+                    });
+                    if(continue_cheking){
+                        SelectTile(x,y);
+                        Game.hero.pointer["x"] = x-16;
+                        Game.hero.pointer["y"] = y-16;
+                        shouldSkip = true;
+                        return;
                     }
-                    return {
-                      move: mover_objetos,
-                      value: fotogramasPorSegundo
-                    }
-                  })();
-                  Counter.move();
-                  window.requestAnimationFrame(update_canvas);
+                };
+                return {
+                  loadGame: LoadGame,
+                  connect: Connect,
+                  attackPlayer: AttackPlayer,
+                  hideChat: HideChat,
+                  ShowChat: ShowChat
                 }
               }
-              else if(info["type"]=="player_dammaged"){
-                Game.players[info["data"]["player"]]["health"] = info["data"]["health"];
-                check_hero_status();
-                if(Game.targets!=""){
-                  check_target_status();
-                }
-              }
-              else if(info["type"]=="new_attack"){
-                var shoot = setTimeout(function(){
-                  Game.items_moving[count_items]=info["data"];
-                },200);
-                const weapon_id = count_items;
-                count_items++;
-                Game.players[info["data"]["player"]]["ruta"] = {};
-                Game.players[info["data"]["player"]]["moves"] = 0;
-                Game.players[info["data"]["player"]]["step"] = 1;
-                Game.players[info["data"]["player"]]["frame"] = 0;
-                Game.players[info["data"]["player"]]["dir"] = info["data"]["dir"];
-                Game.players[info["data"]["player"]]["action"] = "shoot";
-                Game.hero.pointer["draw"] = "no";
-              }
-              else if(info["type"]=="player_out"){
-                delete Game.players[info["data"]];
-              }
-              else if(info["type"]=="new_map"){
-                Game.items_moving={};
-                Game.targets="";
-                Game.players=info["data"]["players"];
-                Game.map.floor=info["data"]["layers"]["floor"];
-                Game.map.sky=info["data"]["layers"]["sky"];
-                Game.map.width=info["data"]["cols"]*info["data"]["t_size"];
-                Game.map.height=info["data"]["rows"]*info["data"]["t_size"];
-                ctx_players.setTransform(1, 0, 0, 1, 0, 0);
-                ctx_players.clearRect(0,0,Game.camera.width,Game.camera.width);
-                Camera(Game.players[Game.hero.id]["posX"],Game.players[Game.hero.id]["posY"],Game.map.width,Game.map.height);
-                Object.keys(Game.players).forEach(function(key){
-                  if(key!=Game.hero.id){
-                    var body = Game.players[key]["body"];
-                    var hair = Game.players[key]["hair"];
-                    var outfit = Game.players[key]["outfit"];
-                    draw_hero(body,hair,outfit,Game.players[key]["name"],Game.players[key]["dir"],Game.players[key]["action"],Game.players[key]["frame"],Game.players[key]["posX"],Game.players[key]["posY"],
-                    Game.players[key]["H"],Game.players[key]["W"],"player",key,Game.players[key]["health"],Game.players[key]["max_health"]);
-                  }
-                  else{
-                    Game.hero.id = key;
-                    load_start_map();
-                  }
-                });
-              }
-              else if(info["type"]=="new_msj"){
-                Game.players[info["player"]]["chat"] = info["data"];
-                if(Game.hero.id == info["player"]){
-                  Game.players[Game.hero.id]["chat"] = info["data"];
-                }
-                else{
-                  if(info["data"]!=""){
-                    $("chat_history").innerHTML +="<span style='color:blue'>"+info["player_name"]+": "+ info["data"] + "</span><br>";
-                    $("chat_history").scrollTop =$("chat_history").scrollHeight;
-                  }
-                }
-              }
-            }
-            function Camera(xpos,ypos,mapW,mapH) {
-                var camX=cam_limits(xpos-Game.camera.width/2+Game.players[Game.hero.id]["W"]/2,0,mapW-Game.camera.width)||0;
-                var camY=cam_limits(ypos-Game.camera.height/2+Game.players[Game.hero.id]["H"]/2,0,mapH-Game.camera.height)||0;
-                function cam_limits(coord,min,max){
-                  if (coord < min) {
-                    return min
-                  } else if (coord > max) {
-                    return max
-                  } else {
-                    return coord
-                  }
-                }
-              Game.camera.CamX=camX;
-              Game.camera.CamY=camY;
-              ctx_background.translate(-camX, -camY);
-              ctx_sky.translate(-camX, -camY);
-              ctx_players.translate(-camX, -camY);
-              ctx_hero.translate(-camX, -camY);
-              ctx_items.translate(-camX, -camY);
-            }
-            function select_tile(x,y){
-              //console.log("Hx:"+Game.players[Game.hero.id]["posX"]+" Hy:"+Game.players[Game.hero.id]["posY"]+" Dx:"+x+" Dy:"+y);
-              if(Object.keys(Game.players[Game.hero.id]["ruta"]).length>0){
-                Game.players[Game.hero.id]["ruta"] = {};
-                Game.players[Game.hero.id]["step"] = 1;
-                Game.players[Game.hero.id]["moves"] = 0;
-                Game.hero.pointer["draw"] = "no";
-              }
-              var send = (
-                function(){
-                   const data = function send(){
-                     websocket.send(JSON.stringify([
-                       {type: 'new_state'},
-                       {map: Game.map.name,
-                       posX: Game.players[Game.hero.id]["posX"],
-                       posY: Game.players[Game.hero.id]["posY"],
-                       desX:x,
-                       desY:y-16
-                       }
-                     ]));
-                  }
-                  return {
-                    datos: data,
-                  }
-                }
-              )();
-              send.datos();
-            }
-            function update_canvas(){
-              ctx_players.setTransform(1, 0, 0, 1, 0, 0);
-              ctx_hero.setTransform(1, 0, 0, 1, 0, 0);
-              ctx_sky.setTransform(1, 0, 0, 1, 0, 0);
-              ctx_background.setTransform(1, 0, 0, 1, 0, 0);
-              ctx_players.clearRect(0,0,Game.camera.width,Game.camera.width);
-              ctx_hero.clearRect(0,0,Game.camera.width,Game.camera.width);
-              ctx_sky.clearRect(0,0,Game.camera.width,Game.camera.width);
-              Camera(Game.players[Game.hero.id]["posX"],Game.players[Game.hero.id]["posY"],Game.map.width,Game.map.height);
-              ctx_background.drawImage($(Game.map.floor),0,0,Game.map.width,Game.map.height);
-              ctx_sky.drawImage($(Game.map.sky),0,0,Game.map.width,Game.map.height,0,0,Game.map.width,Game.map.height);
-              if(Object.keys(Game.items_moving).length>0){
-                var items = Game.items_moving;
-                Object.keys(items).forEach(function(key){
-                  draw_weapon($(items[key]["bullet"]),items[key]["w_dir"],items[key]["frame"],items[key]["x"],items[key]["y"],items[key]["height"],items[key]["width"],items[key]["animated"],ctx_hero);
-                });
-              }
-              Object.keys(Game.players).forEach(function(key){
-                if(key!=Game.hero.id){
-                  var body = Game.players[key]["body"];
-                  var hair = Game.players[key]["hair"];
-                  var outfit = Game.players[key]["outfit"];
-                  draw_hero(body,hair,outfit,Game.players[key]["name"],Game.players[key]["dir"],Game.players[key]["action"],Game.players[key]["frame"],Game.players[key]["posX"],Game.players[key]["posY"],
-                  Game.players[key]["H"],Game.players[key]["W"],"player",key,Game.players[key]["health"],Game.players[key]["max_health"]);
-                  if(Game.players[key]["chat"]!=""){
-                    drawBubble(Game.players[key]["chat"],
-                    Game.players[key]["posX"]+Game.players[key]["W"],
-                    Game.players[key]["posY"]+Game.players[key]["H"],"player");
-                  }
-                }
-                else{
-                  $("HP").innerHTML = Game.players[Game.hero.id]["health"];
-                  draw_hp_bar(Game.players[Game.hero.id]["health"]);
-                  if(Game.hero.pointer["draw"] == "yes"){
-                    ctx_hero.drawImage($("pointer.png"),Game.hero.pointer["x"],Game.hero.pointer["y"]);
-                  }
-                  var body = Game.players[key]["body"];
-                  var hair = Game.players[key]["hair"];
-                  var outfit = Game.players[key]["outfit"];
-                  draw_hero(body,hair,outfit,Game.players[key]["name"],Game.players[key]["dir"],Game.players[key]["action"],Game.players[key]["frame"],Game.players[key]["posX"],Game.players[key]["posY"],
-                  Game.players[key]["H"],Game.players[key]["W"],"hero",key,Game.players[key]["health"],Game.players[key]["max_health"]);
-                  if(Game.players[Game.hero.id]["chat"]!=""){
-                    drawBubble(Game.players[key]["chat"],
-                    Game.players[key]["posX"]+Game.players[key]["W"],
-                    Game.players[key]["posY"]+Game.players[key]["H"],"hero");
-                  }
-                }
-              });
-              window.requestAnimationFrame(update_canvas);
-            }
-            function attack_player(){
-              if(Game.targets!="" && Game.hero.equiped_weapon!="" && Game.players[Game.hero.id]["weapons"][Game.hero.equiped_weapon]["active"]==true){
-                var send = (
-                  function(){
-                     const data = function send(){
-                       websocket.send(JSON.stringify([
-                         {type: 'attack_action'},
-                         {target_id: Game.targets,
-                           px:Game.players[Game.hero.id]["posX"],
-                           py:Game.players[Game.hero.id]["posY"] + 8,
-                           tx:Game.players[Game.targets]["posX"],
-                           ty:Game.players[Game.targets]["posY"],
-                           weapon:Game.hero.equiped_weapon
-                         }
-                       ]));
-                    }
-                    return {
-                      datos: data,
-                    }
-                  }
-                )();
-                send.datos();
-                Game.players[Game.hero.id]["weapons"][Game.hero.equiped_weapon]["active"]=false;
-                for (var i = 1 ; i<weapon_select.length+1;i++){
-                  if($("A"+(i).toString()+"-Img").alt == Game.hero.equiped_weapon){
-                    $("A"+(i).toString()+"-Img").classList.add("w3-grayscale-max");
-                  }
-                }
-                const weapon = Game.hero.equiped_weapon;
-                var inactive_weapon = setTimeout(function(){
-                  Game.players[Game.hero.id]["weapons"][weapon]["active"]=true;
-                  for (var i = 1 ; i<weapon_select.length+1;i++){
-                    if($("A"+(i).toString()+"-Img").alt == weapon){
-                      $("A"+(i).toString()+"-Img").classList.remove("w3-grayscale-max");
-                    }
-                  }
-                },Game.players[Game.hero.id]["weapons"][Game.hero.equiped_weapon]["time_span"] * 1000);
-              }
-            }
-            function draw_hero(body,hair,outfit,name,dir,action,frame,posx,posy,h,w,type,id,health,max_health){
-              var body_img = "body" + body.toString() + "_" + action + ".png";
-              var hair_img = "hair" + hair.toString() + "_" + action + ".png";
-              var outfit_img = "outfit" + outfit.toString() + "_" + action + ".png";
-              const cols= 24;
-              const rows= action=="shoot"?2:1;
-              const chars={
-                walk:{right:[1,2,3,4,5,6],up:[7,8,9,10,11,12],left:[13,14,15,16,17,18],down:[19,20,21,22,23,24],empty_pixels:0},
-                stop:{right:[1,2,3,4,5,6],up:[7,8,9,10,11,12],left:[13,14,15,16,17,18],down:[19,20,21,22,23,24],empty_pixels:0},
-                shoot:{right:[1,25,26,27],up:[7,28,29,30],left:[13,31,32,33],down:[19,34,35,36],empty_pixels:16},
-              }
-              function getTile(Action,dir){
-                if(dir=="down"){return chars[Action].down[frame];}
-                else if(dir=="up"){return chars[Action].up[frame];}
-                else if(dir=="left"){return chars[Action].left[frame];}
-                else if(dir=="right"){return chars[Action].right[frame];}
-              }
-              for(var r = 0; r<chars[action][dir].length; r++){
-                var tile = getTile(action,dir);
-                var x = ((tile-1)*w) -((w*cols)*Math.floor((tile-1)/cols));
-                var y = ((Math.floor((tile-1)/cols))*h) + (chars[action]["empty_pixels"]*((Math.floor((tile-1)/cols))+1));
-                if(type=="hero"){
-                  ctx_hero.drawImage($(body_img),x,y,w,h,posx,posy,w,h);
-                  ctx_hero.drawImage($(hair_img),x,y,w,h,posx,posy,w,h);
-                  ctx_hero.drawImage($(outfit_img),x,y,w,h,posx,posy,w,h);
-                }
-                else{
-                  ctx_players.drawImage($(body_img),x,y,w,h,posx,posy,w,h);
-                  ctx_players.drawImage($(hair_img),x,y,w,h,posx,posy,w,h);
-                  ctx_players.drawImage($(outfit_img),x,y,w,h,posx,posy,w,h);
-                }
-              }
-              if(Game.targets.includes(id)){
-                var hp_W = (health*w)/max_health;
-                ctx_players.beginPath();
-                ctx_players.lineWidth = "1";
-                ctx_players.rect(posx,posy-5,hp_W,6);
-                ctx_players.strokeStyle = "black";
-                if(hp_W>(w/2)){
-                  ctx_players.fillStyle = "green";
-                }
-                else if(hp_W<(w/2) && hp_W>(w/4)){
-                  ctx_players.fillStyle = "orange";
-                }
-                else{
-                  ctx_players.fillStyle = "red";
-                }
-                ctx_players.closePath();
-                ctx_players.fill();
-                ctx_players.stroke();
-              }
-              if(type=="hero"){
-                ctx_hero.font = "12px Arial";
-                var name_w = ctx_hero.measureText(name).width;
-                var n_x= (name_w-w)/2;
-                ctx_players.fillStyle = "black";
-                ctx_hero.fillText(name,posx-n_x,posy-10);
-              }
-              else{
-                ctx_players.font = "12px Arial";
-                var name_w = ctx_players.measureText(name).width;
-                var n_x= (name_w-w)/2;
-                ctx_players.fillStyle = "black";
-                ctx_players.fillText(name,posx-n_x,posy-10);
-              }
-            }
-            function draw_weapon(img,dir,frame,posx,posy,h,w,animated,ctx){
-              let cols= animated?3:1;
-              let rows= animated?4:1;
-              let tile_w = 32;
-              let tile_h=32;
-              let draw_frame = animated?frame:0;
-              let weapon=animated?{"moves":{down:[1,2,3],left:[4,5,6],right:[7,8,9],up:[10,11,12]}}:{"moves":{down:[1],left:[1],right:[1],up:[1]}}
-              function getTile(arma,dir){
-                if(dir=="down"){return weapon[arma].down[draw_frame];}
-                else if(dir=="up"){return weapon[arma].up[draw_frame];}
-                else if(dir=="left"){return weapon[arma].left[draw_frame];}
-                else if(dir=="right"){return weapon[arma].right[draw_frame];}
-              }
-              for(var r=0;r<weapon["moves"][dir].length;r++){
-                var tile = getTile("moves",dir);
-                var x = ((tile-1)*tile_w) -((tile_w*cols)*Math.floor((tile-1)/cols));
-                var y = (Math.floor((tile-1)/cols))*tile_h;
-                ctx.drawImage(img,x,y,tile_w,tile_h,posx+((tile_w-w)/2),posy+((tile_h-h)/2),w,h);
-              }
-            }
-            function drawBubble(txt,x,y,type){
-              var ctx_target = ctx_sky;
-              ctx_target.font = "12px Arial";
-              var text = txt;
-              var h = 20;
-              var radius = 10;
-              var w = ctx_target.measureText(text).width +10;
-              xt= 5;
-              if(w<60){w=60; xt=30-(ctx_target.measureText(text).width/2);}
-              var r = x + w;
-              var b = y + h;
-              ctx_target.beginPath();
-              ctx_target.strokeStyle="black";
-              ctx_target.lineWidth="2";
-              ctx_target.moveTo(x+radius, y);
-              ctx_target.lineTo(x+radius/2, y-10);
-              ctx_target.lineTo(x+radius * 2, y);
-              ctx_target.lineTo(r-radius, y);
-              ctx_target.quadraticCurveTo(r, y, r, y+radius);
-              ctx_target.lineTo(r, y+h-radius);
-              ctx_target.quadraticCurveTo(r, b, r-radius, b);
-              ctx_target.lineTo(x+radius, b);
-              ctx_target.quadraticCurveTo(x, b, x, b-radius);
-              ctx_target.lineTo(x, y+radius);
-              ctx_target.quadraticCurveTo(x, y, x+radius, y);
-              ctx_target.stroke();
-              ctx_target.fillStyle = '#FFFFFF';
-              ctx_target.fill();
-              ctx_target.fillStyle = "#000000";
-              ctx_target.fillText(text,x+xt,y+(h/2)+3);
-            }
-            function check_hero_status(){
-              if(Game.players[Game.hero.id]["health"]<1){
-                var send = (
-                  function(){
-                     const data = function send(){
-                       websocket.send(JSON.stringify([
-                         {type: 'dead_player'}
-                       ]));
-                    }
-                    return {
-                      datos: data,
-                    }
-                  }
-                )();
-                send.datos();
-                console.log("Te han derrotado");
-                Game.map.name = "map1";
-                Game.map.floor = "map1-floor.png";
-                Game.map.sky = "map1-sky.png";
-                websocket.send(JSON.stringify([
-                  {type: 'start'},
-                  {map: Game.map.name,
-                  player_name:$("player_nom").value,
-                  sprite: Game.hero.sprite,
-                  fase:1,
-                  body:Game.hero.body,
-                  hair:Game.hero.hair,
-                  outfit:Game.hero.outfit,
-                }
-                ]));
-              }
-            }
-            function check_target_status(){
-              if(Game.players[Game.targets]['health']<1){
-                console.log("Has Ganado");
-                Game.targets="";
-              }
-            }
-            websocket.onmessage = function (event) {
-                data = JSON.parse(event.data);
-                proccess_data(data);
-            }
-            function getCursorPosition(canvas, event) {
-                const rect = canvas.getBoundingClientRect();
-                var Nx = event.clientX - rect.left;
-                var Ny = event.clientY - rect.top;
-                if(event.type == 'touchstart'){
-                    var evt = (typeof event.originalEvent === 'undefined') ? event : event.originalEvent;
-                    var touch = evt.touches[0] || evt.changedTouches[0];
-                    Nx = touch.pageX - rect.left;
-                    Ny = touch.pageY - rect.top;
-                }
-                const margenX = rect.width - Game.camera.width;
-                const factorX = margenX==0?rect.width:rect.width/margenX;
-                const margenY = rect.height - Game.camera.height;
-                const factorY = margenY==0?rect.height1:rect.height/margenY;
-
-                var x = margenX>=0?(Nx+Game.camera.CamX)-(Nx/factorX):Nx+Game.camera.CamX+(Nx/Math.abs(factorX));
-                var y = margenY>=0?(Ny+Game.camera.CamY)-(Ny/factorY):Ny+Game.camera.CamY+(Ny/Math.abs(factorY));
-                //console.log("x: " + x + " y: " + y + " Nx: "+Nx + " Ny: "+Ny);
-                const players = Game.players;
-                let shouldSkip = false;
-                let continue_cheking = true;
-                Object.keys(players).forEach(function(key){
-                  var player_1_x = players[key]["posX"];
-                  var player_2_x = players[key]["posX"] + players[key]["W"];
-                  var player_1_y = players[key]["posY"];
-                  var player_2_y = players[key]["posY"] + players[key]["H"];
-                  if (shouldSkip) {
-                    return;
-                  }
-                  if(x < player_2_x && x > player_1_x && y < player_2_y && y > player_1_y && key!=Game.hero.id){
-                    Game.targets = Game.targets==""?key:"";
-                    shouldSkip = true;
-                    continue_cheking = false;
-                    return;
-                  }
-                });
-                if(continue_cheking){
-                    select_tile(x,y);
-                    Game.hero.pointer["x"] = x-16;
-                    Game.hero.pointer["y"] = y-16;
-                    shouldSkip = true;
-                    return;
-                }
-            };
-            $('sky_layer').addEventListener('click', function(e) {
-              if(!handled){
-                  getCursorPosition($('sky_layer'), e);
-              }
-            });
-            $('sky_layer').addEventListener('touchstart', function(e) {
-                handled = true;
-                getCursorPosition($('sky_layer'), e);
-            });
+            )();
+            game_data.loadGame();
         </script>
     </body>
 </html>
