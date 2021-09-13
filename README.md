@@ -8,5 +8,6 @@ Tecnologías usadas:
 - Websockets (Libreria websockets-9.1)
 
 Últimas modificaciones:
-Agosto 13 2021 - Revisión de caracteres en el Chat global para evitar injección de HTML.
-Agosto 14 2021 - Mejoras en la estructura del cliente aplicando encapsulamiento.
+- Agosto 13 2021: Revisión de caracteres en el Chat global para evitar injección de HTML.
+- Agosto 14 2021: Mejoras en la estructura del cliente aplicando encapsulamiento.
+- Agosto 14 2021: Mejoras en el sistema de colisones para evitar atascarse.
