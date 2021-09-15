@@ -155,7 +155,7 @@
                 }
                 const LoadGame = function load_content(){
                   //websocket = new WebSocket("wss://uigo-morpg.herokuapp.com/");
-                  websocket = new WebSocket("ws://192.168.0.4:6789/");
+                  websocket = new WebSocket("ws://localhost:4000/");
                   websocket.onerror=function(event){
                       alert("La conexión con el servidor ha fallado, intenta recargar la página");
                   }
@@ -277,15 +277,17 @@
                     var send = (
                       function(){
                          const conect = function send(){
-                            websocket.send(JSON.stringify([
-                            {type: 'start'},
-                            {map: Game.map.name,
-                            player_name:$("player_nom").value,
-                            body:Game.hero.body,
-                            hair:Game.hero.hair,
-                            outfit:Game.hero.outfit,
-                            fase:0}
-                            ]));
+                            websocket.send(JSON.stringify(
+                            {
+                              type: 'start',
+                              map: Game.map.name,
+                              player_name:$("player_nom").value,
+                              body:Game.hero.body,
+                              hair:Game.hero.hair,
+                              outfit:Game.hero.outfit,
+                              fase:0
+                            }
+                            ));
                         }
                         return {
                           datos: conect,
@@ -508,11 +510,12 @@
                           var send = (
                             function(){
                                const data = function send(){
-                                 websocket.send(JSON.stringify([
-                                   {type: 'stop'},
-                                   {map: Game.map.name,
+                                 websocket.send(JSON.stringify(
+                                   {
+                                     type: 'stop',
+                                     map: Game.map.name,
                                    }
-                                 ]));
+                                 ));
                               }
                               return {
                                 datos: data,
@@ -537,15 +540,16 @@
                             var send = (
                               function(){
                                  const data = function send(){
-                                   websocket.send(JSON.stringify([
-                                     {type: 'new_position'},
-                                     {map: Game.map.name,
-                                     dir:Game.players[key]["dir"],
-                                     action:"walk",
-                                     step: Game.players[key]["step"],
-                                     moves: Game.players[key]["moves"]
+                                   websocket.send(JSON.stringify(
+                                     {
+                                       type: 'new_position',
+                                       map: Game.map.name,
+                                       dir:Game.players[key]["dir"],
+                                       action:"walk",
+                                       step: Game.players[key]["step"],
+                                       moves: Game.players[key]["moves"]
                                      }
-                                   ]));
+                                   ));
                                 }
                                 return {
                                   datos: data,
@@ -571,15 +575,16 @@
                             var send = (
                               function(){
                                  const data = function send(){
-                                   websocket.send(JSON.stringify([
-                                     {type: 'new_position'},
-                                     {map: Game.map.name,
-                                     dir:Game.players[key]["dir"],
-                                     action:"walk",
-                                     step: Game.players[key]["step"],
-                                     moves: Game.players[key]["moves"]
+                                   websocket.send(JSON.stringify(
+                                     {
+                                       type: 'new_position',
+                                       map: Game.map.name,
+                                       dir:Game.players[key]["dir"],
+                                       action:"walk",
+                                       step: Game.players[key]["step"],
+                                       moves: Game.players[key]["moves"]
                                      }
-                                   ]));
+                                   ));
                                 }
                                 return {
                                   datos: data,
@@ -598,15 +603,15 @@
                             var send = (
                               function(){
                                  const data = function send(){
-                                   websocket.send(JSON.stringify([
-                                     {type: 'new_map'},
+                                   websocket.send(JSON.stringify(
                                      {
+                                       type: 'new_map',
                                        actual_map: Game.map.name,
                                        new_map:Game.players[key]["ruta"][Game.players[key]["step"]]["c"]["map"],
                                        posX: Game.players[key]["ruta"][Game.players[key]["step"]]["c"]["conect_x"],
                                        posY: Game.players[key]["ruta"][Game.players[key]["step"]]["c"]["conect_y"]
                                      }
-                                   ]));
+                                   ));
                                 }
                                 return {
                                   datos: data,
@@ -708,15 +713,16 @@
                         var send = (
                           function(){
                              const data = function send(){
-                               websocket.send(JSON.stringify([
-                                 {type: 'attack'},
-                                 {map: Game.map.name,
+                               websocket.send(JSON.stringify(
+                                 {
+                                   type: 'attack',
+                                   map: Game.map.name,
                                    ws:Game.targets,
                                    weapon:Game.hero.equiped_weapon,
                                    Wx:wx,
                                    Wy:wy
                                  }
-                               ]));
+                               ));
                             }
                             return {
                               datos: data,
@@ -752,22 +758,24 @@
                   if($("text").value!=""){
                     var msj = $("text").value.replace(/[&\/\\#,+()$~%.'":*?<>{}]/g, '');
                     Game.players[Game.hero.id]["chat"] = msj;
-                    websocket.send(JSON.stringify([
-                      {type: 'chat'},
-                      {map: Game.map.name,
-                      player_name:Game.players[Game.hero.id]["name"],
-                      chat:Game.players[Game.hero.id]["chat"]}
-                    ]));
+                    websocket.send(JSON.stringify(
+                      {
+                        type: 'chat',
+                        map: Game.map.name,
+                        player_name:Game.players[Game.hero.id]["name"],
+                        chat:Game.players[Game.hero.id]["chat"]}
+                    ));
                     $("chat_history").innerHTML +="<span style='color:green'>Yo: "+ Game.players[Game.hero.id]["chat"] + "</span><br>";
                     $("chat_history").scrollTop = $("chat_history").scrollHeight;
                     var msj_time = setTimeout(function(){
                       Game.players[Game.hero.id]["chat"] = "";
-                      websocket.send(JSON.stringify([
-                        {type: 'chat'},
-                        {map: Game.map.name,
-                        player_name:Game.players[Game.hero.id]["name"],
-                        chat:Game.players[Game.hero.id]["chat"]}
-                      ]));
+                      websocket.send(JSON.stringify(
+                        {
+                          type: 'chat',
+                          map: Game.map.name,
+                          player_name:Game.players[Game.hero.id]["name"],
+                          chat:Game.players[Game.hero.id]["chat"]}
+                      ));
                     },3000);
                     $("text").value="";
                   }
@@ -803,15 +811,16 @@
                   var send = (
                     function(){
                        const data = function send(){
-                         websocket.send(JSON.stringify([
-                           {type: 'new_state'},
-                           {map: Game.map.name,
-                           posX: Game.players[Game.hero.id]["posX"],
-                           posY: Game.players[Game.hero.id]["posY"],
-                           desX:x,
-                           desY:y-16
+                         websocket.send(JSON.stringify(
+                           {
+                             type: 'new_state',
+                             map: Game.map.name,
+                             posX: Game.players[Game.hero.id]["posX"],
+                             posY: Game.players[Game.hero.id]["posY"],
+                             desX:x,
+                             desY:y-16
                            }
-                         ]));
+                         ));
                       }
                       return {
                         datos: data,
@@ -825,16 +834,17 @@
                     var send = (
                       function(){
                          const data = function send(){
-                           websocket.send(JSON.stringify([
-                             {type: 'attack_action'},
-                             {target_id: Game.targets,
+                           websocket.send(JSON.stringify(
+                             {
+                               type: 'attack_action',
+                               target_id: Game.targets,
                                px:Game.players[Game.hero.id]["posX"],
                                py:Game.players[Game.hero.id]["posY"] + 8,
                                tx:Game.players[Game.targets]["posX"],
                                ty:Game.players[Game.targets]["posY"],
                                weapon:Game.hero.equiped_weapon
                              }
-                           ]));
+                           ));
                         }
                         return {
                           datos: data,
@@ -981,9 +991,11 @@
                     var send = (
                       function(){
                          const data = function send(){
-                           websocket.send(JSON.stringify([
-                             {type: 'dead_player'}
-                           ]));
+                           websocket.send(JSON.stringify(
+                             {
+                               type: 'dead_player'
+                             }
+                           ));
                         }
                         return {
                           datos: data,
@@ -995,17 +1007,18 @@
                     Game.map.name = "map1";
                     Game.map.floor = "map1-floor.png";
                     Game.map.sky = "map1-sky.png";
-                    websocket.send(JSON.stringify([
-                      {type: 'start'},
-                      {map: Game.map.name,
-                      player_name:$("player_nom").value,
-                      sprite: Game.hero.sprite,
-                      fase:1,
-                      body:Game.hero.body,
-                      hair:Game.hero.hair,
-                      outfit:Game.hero.outfit,
-                    }
-                    ]));
+                    websocket.send(JSON.stringify(
+                      {
+                        type: 'start',
+                        map: Game.map.name,
+                        player_name:$("player_nom").value,
+                        sprite: Game.hero.sprite,
+                        fase:1,
+                        body:Game.hero.body,
+                        hair:Game.hero.hair,
+                        outfit:Game.hero.outfit,
+                      }
+                    ));
                   }
                 }
                 const CheckTargetStatus = function check_target_status(){
