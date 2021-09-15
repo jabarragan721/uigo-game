@@ -359,6 +359,7 @@ async def action(websocket, path): #Escuchar acciones del cliente
     finally:
         await unregister(websocket)
 
+
 #Desabilita la advertencia pylint, que se activa porque websockets hace un lazy load de las propiedades
 #pylint: disable = no-member
 start_server = websockets.serve(action, SERVER_CONF.IP, int(SERVER_CONF.PORT))
