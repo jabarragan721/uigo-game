@@ -327,7 +327,7 @@ async def action(websocket, path): #Escuchar acciones del cliente
                 outfit=data['outfit']
                 await start_player(map,map_name,player_name,body,hair,outfit,str(websocket),fase)
             elif data['type']=='attack':
-                map=maps.world[data[1]['map']]
+                map=maps.world[data['map']]
                 target=data['ws']
                 player=str(websocket)
                 weapon=data['weapon']
