@@ -11,6 +11,8 @@ import ruta
 import math
 import os
 
+from config import SERVER_CONF
+
 logging.basicConfig()
 users_pos={}
 USERS = {}
@@ -353,12 +355,12 @@ async def action(websocket, path): #Escuchar acciones del cliente
                 weapon=data[1]['weapon']
                 await new_attack(px,py,tx,ty,target,player,weapon)
             else:
-                logging.error("unsupported event: {}", data)
+                logging.error(f'unsupported event: {data}')
     finally:
         await unregister(websocket)
 
-#Para correr el server localmente habilidar la linea 359 y comentar la linea 360
-#start_server = websockets.serve(action, "192.168.0.4", 6789)
-start_server = websockets.serve(action, "", int(os.environ["PORT"]))
+#Desabilita la advertencia pylint, que se activa porque websockets hace un lazy load de las propiedades
+#pylint: disable = no-member
+start_server = websockets.serve(action, SERVER_CONF.IP, int(SERVER_CONF.PORT))
 asyncio.get_event_loop().run_until_complete(start_server)
 asyncio.get_event_loop().run_forever()
