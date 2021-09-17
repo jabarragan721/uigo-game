@@ -37,12 +37,11 @@ async def encontrar(ws,new_map,WS):#encontrar y eliminar un persona del mapa
 async def stop_player(ws,map,map_name):
     if ws in map["players"]:
         map["players"][ws]["ruta"] = {}
-        map["players"][ws]["action"] = "stop"
         map["players"][ws]["step"] = 1
         map["players"][ws]["moves"] = 0
         await send_update(ws,map_name)
 
-async def update_player_position(map,dir,action,ws,step,moves):
+async def update_player_position(map,dir,ws,step,moves):
     if ws in map["players"]:
         player = map["players"][ws]
         #TODO: Agregar una función de movimiento al player
@@ -55,14 +54,16 @@ async def update_player_position(map,dir,action,ws,step,moves):
         elif dir == "right":
             player["posX"] += player["speed"]
         player["frame"] += 1
-        # action siempre es diferente de shoot, solo se envía walk para el
-        # mensaje type walk
-        if player["frame"] > 5 and action != "shoot":
+        # action siempre es diferente de shoot, siempre se envia la action = "walk"
+        # para el mensaje type = "walk" además nunca va a llegar a 5 porque al
+        # llegar a 3 se devuelve a 0
+        # if player["frame"] > 5 and action != "shoot":
+        #     player["frame"] = 0
+        #     player["action"] = action
+        # elif player["frame"] > 3:
+        # ...
+        if player["frame"] > 3:
             player["frame"] = 0
-            player["action"] = action
-        elif player["frame"] > 3:
-            player["frame"] = 0
-            player["action"] = "stop"
         player["dir"] = dir
         player["step"] = step
         player["moves"] = moves
@@ -157,7 +158,9 @@ async def start_player(map,map_name,player_name,body,hair,outfit,ws,fase):# Para
         "outfit": outfit,
         "frame": 0,
         "dir": "down",
-        "action": "stop",
+        "action": "stop", # Esta action sobra, no se elimina aún porque el front
+        # depende de este campo
+        #TODO: Eliminar del front, al menos para que se use internamente
         "chat": "",
         "posX": 544,
         "posY": 800,
@@ -180,7 +183,6 @@ async def start_player(map,map_name,player_name,body,hair,outfit,ws,fase):# Para
 
 async def new_map_player(map,dir,posX,posY,ws):
     map["players"][ws]["dir"] = dir
-    map["players"][ws]["action"] = "stop"
     map["players"][ws]["posX"] = posX
     map["players"][ws]["posY"] = posY
     map["players"][ws]["ruta"] = {}
@@ -316,8 +318,7 @@ async def action(websocket, path): #Escuchar acciones del cliente
                 dir=data['dir']
                 step=data['step']
                 moves=data['moves']
-                action=data['action']
-                await update_player_position(map,dir,action,str(websocket),step,moves)
+                await update_player_position(map,dir,str(websocket),step,moves)
             elif data['type']=='new_map':
                 new_map=maps.world[data['new_map']]
                 posX=data['posX']
