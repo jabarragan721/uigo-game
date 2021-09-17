@@ -17,7 +17,7 @@ logging.basicConfig()
 users_pos={}
 USERS = {}
 maps.populate_tiles()
-async def register(ws,map,nombre):
+async def register_user(ws,map,nombre):
     USERS[ws] = {"mapa":map,"id":str(ws)}
 
 async def encontrar(ws,new_map,WS):#encontrar y eliminar un persona del mapa
@@ -42,26 +42,30 @@ async def stop_player(ws,map,map_name):
         map["players"][ws]["moves"] = 0
         await send_update(ws,map_name)
 
-async def update_position(map,dir,action,ws,step,moves):
+async def update_player_position(map,dir,action,ws,step,moves):
     if ws in map["players"]:
+        player = map["players"][ws]
+        #TODO: Agregar una función de movimiento al player
         if dir == "up":
-            map["players"][ws]["posY"] -= map["players"][ws]["speed"]
+            player["posY"] -= player["speed"]
         elif dir == "down":
-            map["players"][ws]["posY"] += map["players"][ws]["speed"]
+            player["posY"] += player["speed"]
         elif dir == "left":
-            map["players"][ws]["posX"] -= map["players"][ws]["speed"]
+            player["posX"] -= player["speed"]
         elif dir == "right":
-            map["players"][ws]["posX"] += map["players"][ws]["speed"]
-        map["players"][ws]["frame"] += 1
-        if map["players"][ws]["frame"] > 5 and action != "shoot":
-            map["players"][ws]["frame"] = 0;
-            map["players"][ws]["action"] = action
-        elif map["players"][ws]["frame"] > 3:
-            map["players"][ws]["frame"] = 0
-            map["players"][ws]["action"] = "stop"
-        map["players"][ws]["dir"] = dir
-        map["players"][ws]["step"] = step
-        map["players"][ws]["moves"] = moves
+            player["posX"] += player["speed"]
+        player["frame"] += 1
+        # action siempre es diferente de shoot, solo se envía walk para el
+        # mensaje type walk
+        if player["frame"] > 5 and action != "shoot":
+            player["frame"] = 0
+            player["action"] = action
+        elif player["frame"] > 3:
+            player["frame"] = 0
+            player["action"] = "stop"
+        player["dir"] = dir
+        player["step"] = step
+        player["moves"] = moves
 
 async def player_refresh(map,map_name,posX,posY,ws,desX,desY):#Nuevo movimiento de jugador
     if ws in map["players"]:
@@ -86,10 +90,10 @@ async def new_attack(x1,y1,x2,y2,target,player,weapon):
     vx = x2-x1
     vy = y2-y1
     dist = math.sqrt(vx * vx + vy * vy)
-    dx = vx / dist;
-    dy = vy / dist;
-    dx *= speed;
-    dy *= speed;
+    dx = vx / dist
+    dy = vy / dist
+    dx *= speed
+    dy *= speed
     if x1 < x2 and y2 < y1:
         if abs(vx) > abs(vy):
             dir="right"
@@ -144,32 +148,35 @@ async def new_attack(x1,y1,x2,y2,target,player,weapon):
             message = json.dumps(data)
             await user.send(message)
 
-async def start_player(map,map_name,player_name,body,hair,outfit,ws,fase):#Parametros iniciales al conectarse
-    map["players"][ws] = {}
-    map["players"][ws]["name"] = player_name
-    map["players"][ws]["body"] = body
-    map["players"][ws]["hair"] = hair
-    map["players"][ws]["outfit"] = outfit
-    map["players"][ws]["frame"] = 0
-    map["players"][ws]["dir"] = "down"
-    map["players"][ws]["action"] = "stop"
-    map["players"][ws]["chat"] = ""
-    map["players"][ws]["posX"] = 544
-    map["players"][ws]["posY"] = 800
-    map["players"][ws]["H"] = 48
-    map["players"][ws]["W"] = 32
-    map["players"][ws]["Socket"] = ws
-    map["players"][ws]["max_health"] = 50
-    map["players"][ws]["health"] = 50
-    map["players"][ws]["speed"] = 3
-    map["players"][ws]["ruta"] = {}
-    map["players"][ws]["step"] = 1
-    map["players"][ws]["moves"] = 0
-    map["players"][ws]["weapons"] = {
-        weapons.clases["normal_gun"]["name"]:weapons.clases["normal_gun"],
-        weapons.clases["normal_bomerang"]["name"]:weapons.clases["normal_bomerang"]
+async def start_player(map,map_name,player_name,body,hair,outfit,ws,fase):# Parametros iniciales al conectarse
+    #TODO Usar un constructor de un player
+    map["players"][ws] = {
+        "name": player_name,
+        "body": body,
+        "hair": hair,
+        "outfit": outfit,
+        "frame": 0,
+        "dir": "down",
+        "action": "stop",
+        "chat": "",
+        "posX": 544,
+        "posY": 800,
+        "H": 48,
+        "W": 32,
+        "Socket": ws,
+        "max_health": 50,
+        "health": 50,
+        "speed": 3,
+        "ruta": {},
+        "step": 1,
+        "moves": 0,
+        "weapons": { #TODO Usar un constructor de weapons, probablemente dentro
+                    #del constructor del player
+            weapons.clases["normal_gun"]["name"]: weapons.clases["normal_gun"],
+            weapons.clases["normal_bomerang"]["name"]: weapons.clases["normal_bomerang"]
+        }
     }
-    await send_data(ws,map_name,fase)
+    await send_start_message(ws,map_name,fase)
 
 async def new_map_player(map,dir,posX,posY,ws):
     map["players"][ws]["dir"] = dir
@@ -207,10 +214,10 @@ async def send_msj(user_id,player_name,map_name,chat):
                 await user.send(message)
 
 async def player_attacked(map,target,player,weapon,wx,wy):
-    target_1_x = map["players"][target]["posX"];
-    target_2_x = map["players"][target]["posX"] + map["players"][target]["W"];
-    target_1_y = map["players"][target]["posY"];
-    target_2_y = map["players"][target]["posY"] + map["players"][target]["H"];
+    target_1_x = map["players"][target]["posX"]
+    target_2_x = map["players"][target]["posX"] + map["players"][target]["W"]
+    target_1_y = map["players"][target]["posY"]
+    target_2_y = map["players"][target]["posY"] + map["players"][target]["H"]
     if wx>target_1_x and wx<target_2_x and wy>target_1_y and wy<target_2_y:
         dammage = weapons.clases[weapon]["dammage"]
         health = map["players"][target]["health"] - dammage
@@ -228,8 +235,13 @@ async def player_attacked(map,target,player,weapon,wx,wy):
                 }
                 message = json.dumps(data)
                 await user.send(message)
-
-async def send_data(user_id,map_name,fase):
+'''
+Envía un mensaje a todos los usuarios
+Si el usuario es el mismo que se conectó, le envía el mensaje start
+De lo contrario, valida que esté en el mismo mapa que el usuario que ingresó
+    para notificarle que un usuario nuevo ingresó
+'''
+async def send_start_message(user_id,map_name,fase):
     if USERS:
         for user in USERS:
             if user_id == USERS[user]["id"]:
@@ -241,7 +253,7 @@ async def send_data(user_id,map_name,fase):
                 await user.send(message)
             elif map_name == USERS[user]["mapa"]:
                 data = {
-                    "data":maps.world[USERS[user]["mapa"]]["players"][user_id],
+                    "data":maps.world[map_name]["players"][user_id],
                     "items":{},
                     "type":"new_player"
                 }
@@ -271,13 +283,11 @@ async def update_players(new_map,actual_map,user_id):
                 message = json.dumps({"type":"new_map","data":maps.world[USERS[user]["mapa"]]})
                 await user.send(message)
 
-async def unregister(ws):
+async def unregister_user(ws):
     USERS.pop(ws, None)
-    target_map = {};
     for map in maps.world:
         for player in maps.world[map]["players"]:
             if player == str(ws):
-                target_map = maps.world[map];
                 maps.world[map]["players"].pop(player)
                 for user in USERS:
                     if map == USERS[user]["mapa"]:
@@ -307,9 +317,8 @@ async def action(websocket, path): #Escuchar acciones del cliente
                 step=data['step']
                 moves=data['moves']
                 action=data['action']
-                await update_position(map,dir,action,str(websocket),step,moves)
+                await update_player_position(map,dir,action,str(websocket),step,moves)
             elif data['type']=='new_map':
-                actual_map=maps.world[data['actual_map']]
                 new_map=maps.world[data['new_map']]
                 posX=data['posX']
                 posY=data['posY']
@@ -317,7 +326,7 @@ async def action(websocket, path): #Escuchar acciones del cliente
                 await new_map_player(new_map,dir,posX,posY,str(websocket))
                 await update_players(data['new_map'],data['actual_map'],str(websocket))
             elif data['type']=='start':
-                await register(websocket,data['map'],data['player_name'])
+                await register_user(websocket,data['map'],data['player_name'])
                 map=maps.world[data['map']]
                 map_name=data['map']
                 fase = data['fase']
@@ -335,7 +344,7 @@ async def action(websocket, path): #Escuchar acciones del cliente
                 wy=data['Wy']
                 await player_attacked(map,target,player,weapon,wx,wy)
             elif data['type']=='dead_player':
-                await unregister(websocket)
+                await unregister_user(websocket)
             elif data['type']=='stop':
                 map_name=data['map']
                 map=maps.world[data['map']]
@@ -357,7 +366,7 @@ async def action(websocket, path): #Escuchar acciones del cliente
             else:
                 logging.error(f'unsupported event: {data}')
     finally:
-        await unregister(websocket)
+        await unregister_user(websocket)
 
 
 #Desabilita la advertencia pylint, que se activa porque websockets hace un lazy load de las propiedades
