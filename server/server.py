@@ -79,51 +79,34 @@ async def player_refresh(map,map_name,posX,posY,ws,desX,desY):#Nuevo movimiento 
         map["players"][ws]["moves"] = 0
         await send_update(ws,map_name)
 
-async def new_attack(x1,y1,x2,y2,target,player,weapon):
-    speed = weapons.clases[weapon]["speed"]
-    sprite = weapons.clases[weapon]["sprite"]
-    bullet = weapons.clases[weapon]["bullet"]
-    width = weapons.clases[weapon]["width"]
-    height = weapons.clases[weapon]["height"]
-    animated = weapons.clases[weapon]["animated"]
-    alcance = weapons.clases[weapon]["alcance"]
-    dir = ""
-    vx = x2-x1
-    vy = y2-y1
+async def new_attack(pos_player_x, pos_player_y, pos_target_x, pos_target_y, target, player, weapon):
+    player_weapon = weapons.clases[weapon]
+
+    speed = player_weapon["speed"]
+    sprite = player_weapon["sprite"]
+    bullet = player_weapon["bullet"]
+    width = player_weapon["width"]
+    height = player_weapon["height"]
+    animated = player_weapon["animated"]
+    alcance = player_weapon["alcance"]# TODO: Cambiar a range
+
+    vx = pos_target_x - pos_player_x
+    vy = pos_target_y - pos_player_y
     dist = math.sqrt(vx * vx + vy * vy)
-    dx = vx / dist
-    dy = vy / dist
-    dx *= speed
-    dy *= speed
-    if x1 < x2 and y2 < y1:
+
+    dx = (vx / dist) * speed
+    dy = (vy / dist) * speed
+
+    direction = ""
+    if vx != 0 or vy != 0: # Si el player y target están en diferentes posiciones
         if abs(vx) > abs(vy):
-            dir="right"
+            direction = "right" if (vx > 0) else "left"
         else:
-            dir="up"
-    elif x1 > x2 and y2 < y1:
-        if abs(vx) > abs(vy):
-            dir="left"
-        else:
-            dir="up"
-    elif x1 < x2 and y2 > y1:
-        if abs(vx) > abs(vy):
-            dir="right"
-        else:
-            dir="down"
-    elif x1 > x2 and y2 > y1:
-        if abs(vx) > abs(vy):
-            dir="left"
-        else:
-            dir="down"
-    elif x1 == x2 and y2 < y1:
-        dir = "up"
-    elif x1 == x2 and y2 > y1:
-        dir = "down"
-    elif x1 > x2 and y2 == y1:
-        dir = "left"
-    elif x1 < x2 and y2 == y1:
-        dir = "right"
+            direction = "down" if (vy > 0) else "up"
+
+
     for user in USERS:
+        #TODO: Mover método de envíar información a player
         if player == USERS[user]["id"] or target == USERS[user]["id"]:
             data = {
                 "type":"new_attack",
@@ -136,14 +119,14 @@ async def new_attack(x1,y1,x2,y2,target,player,weapon):
                     "width":width,
                     "height":height,
                     "animated":animated,
-                    "alcance":alcance,
-                    "w_dir":dir,
+                    "alcance":alcance, # Cambiar a range
+                    "w_dir":direction,
                     "frame":0,
                     "frame_ratio":0,
-                    "x":x1,
-                    "y":y1,
+                    "x":pos_player_x,
+                    "y":pos_player_y,
                     "player":player,
-                    "dir":dir
+                    "dir":direction
                 }
             }
             message = json.dumps(data)
@@ -215,17 +198,21 @@ async def send_msj(user_id,player_name,map_name,chat):
                 message = json.dumps(data)
                 await user.send(message)
 
-async def player_attacked(map,target,player,weapon,wx,wy):
-    target_1_x = map["players"][target]["posX"]
-    target_2_x = map["players"][target]["posX"] + map["players"][target]["W"]
-    target_1_y = map["players"][target]["posY"]
-    target_2_y = map["players"][target]["posY"] + map["players"][target]["H"]
-    if wx>target_1_x and wx<target_2_x and wy>target_1_y and wy<target_2_y:
+async def player_attacked(map, target, player, weapon, wx, wy):
+    map_target = map["players"][target]
+    target_1_x = map_target["posX"]
+    target_2_x = map_target["posX"] + map_target["W"]
+    target_1_y = map_target["posY"]
+    target_2_y = map_target["posY"] + map_target["H"]
+    if (wx > target_1_x
+        and wx < target_2_x
+        and wy > target_1_y
+        and wy < target_2_y):
         dammage = weapons.clases[weapon]["dammage"]
-        health = map["players"][target]["health"] - dammage
+        health = map_target["health"] - dammage
         if health<1:
             health = 0
-        map["players"][target]["health"]-=dammage
+        map_target["health"]-=dammage
         for user in USERS:
             if player == USERS[user]["id"] or target == USERS[user]["id"]:
                 data = {
@@ -246,6 +233,7 @@ De lo contrario, valida que esté en el mismo mapa que el usuario que ingresó
 async def send_start_message(user_id,map_name,fase):
     if USERS:
         for user in USERS:
+            #TODO: Mover a un método de player
             if user_id == USERS[user]["id"]:
                 message = json.dumps({
                 "type":"start",
@@ -264,6 +252,7 @@ async def send_start_message(user_id,map_name,fase):
 
 async def update_players(new_map,actual_map,user_id):
     if USERS:
+        #TODO: Mover a un método de player
         for user in USERS:
             if actual_map == USERS[user]["mapa"] and user_id != USERS[user]["id"]:
                 data = {
@@ -355,14 +344,18 @@ async def action(websocket, path): #Escuchar acciones del cliente
                 player_name=data['player_name']
                 chat=data['chat']
                 await send_msj(str(websocket),player_name,map_name,chat)
+            # Se envía un ataque
             elif data['type']=='attack_action':
                 target=data['target_id']
                 player=str(websocket)
+                #posición player
                 px=data['px']
                 py=data['py']
+                #posición target
                 tx=data['tx']
                 ty=data['ty']
                 weapon=data['weapon']
+
                 await new_attack(px,py,tx,ty,target,player,weapon)
             else:
                 logging.error(f'unsupported event: {data}')

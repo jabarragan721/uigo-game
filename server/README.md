@@ -33,6 +33,10 @@ La instalación de las dependencias se debe hacer con el entorno activo, de lo c
 pip install -r ./requirements.txt
 ```
 
+**Configurar la variables de entorno**
+
+En .env.example se encuentran las variables de entorno que se van a utilizar, con texto de ejemplo. Se pueden configurar las variables de entorno en el sistema o se puede crear una copia de este archivo, con el nombre `.env` y cambiar las variables según se requiera
+
 ## Iniciar el server
 
 ```
