@@ -36,7 +36,6 @@ clases = {
         "speed":10,
         "animated":True,
         "time_span":1,
-        "time_span":1,
         "active":True
     },
     "normal_sword":{
