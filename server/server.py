@@ -1,26 +1,29 @@
 #!/usr/bin/env python
+import websockets
 import asyncio
+import math
 import json
 import logging
-import websockets
-import maps
-import threading
-import time
-import weapons
-import ruta
-import math
-import os
+logging.basicConfig()
 
 from config import SERVER_CONF
 
-logging.basicConfig()
+import maps
+import weapons
+import ruta
+from player import Player
+
 users_pos={}
 USERS = {}
 maps.populate_tiles()
-async def register_user(ws,map,nombre):
-    USERS[ws] = {"mapa":map,"id":str(ws)}
 
-async def encontrar(ws,new_map,WS):#encontrar y eliminar un persona del mapa
+def register_user(ws, map):
+    USERS[ws] = {
+        "mapa" : map,
+        "id" : str(ws)
+    }
+
+async def encontrar(ws,new_map,WS):# Encontrar y eliminar un persona del mapa
     results=[]
     player_target = {}
     for map in maps.world:
@@ -82,6 +85,7 @@ async def player_refresh(map,map_name,posX,posY,ws,desX,desY):#Nuevo movimiento 
 async def new_attack(pos_player_x, pos_player_y, pos_target_x, pos_target_y, target, player, weapon):
     player_weapon = weapons.clases[weapon]
 
+    #TODO: Mover a weapon
     speed = player_weapon["speed"]
     sprite = player_weapon["sprite"]
     bullet = player_weapon["bullet"]
@@ -133,36 +137,10 @@ async def new_attack(pos_player_x, pos_player_y, pos_target_x, pos_target_y, tar
             await user.send(message)
 
 async def start_player(map,map_name,player_name,body,hair,outfit,ws,fase):# Parametros iniciales al conectarse
-    #TODO Usar un constructor de un player
-    map["players"][ws] = {
-        "name": player_name,
-        "body": body,
-        "hair": hair,
-        "outfit": outfit,
-        "frame": 0,
-        "dir": "down",
-        "action": "stop", # Esta action sobra, no se elimina aún porque el front
-        # depende de este campo
-        #TODO: Eliminar del front, al menos para que se use internamente
-        "chat": "",
-        "posX": 544,
-        "posY": 800,
-        "H": 48,
-        "W": 32,
-        "Socket": ws,
-        "max_health": 50,
-        "health": 50,
-        "speed": 3,
-        "ruta": {},
-        "step": 1,
-        "moves": 0,
-        "weapons": { #TODO Usar un constructor de weapons, probablemente dentro
-                    #del constructor del player
-            weapons.clases["normal_gun"]["name"]: weapons.clases["normal_gun"],
-            weapons.clases["normal_bomerang"]["name"]: weapons.clases["normal_bomerang"]
-        }
-    }
+    newPlayer = Player(player_name, body, hair, outfit, ws)
     await send_start_message(ws,map_name,fase)
+
+    map["players"][ws] = newPlayer
 
 async def new_map_player(map,dir,posX,posY,ws):
     map["players"][ws]["dir"] = dir
@@ -316,7 +294,7 @@ async def action(websocket, path): #Escuchar acciones del cliente
                 await new_map_player(new_map,dir,posX,posY,str(websocket))
                 await update_players(data['new_map'],data['actual_map'],str(websocket))
             elif data['type']=='start':
-                await register_user(websocket,data['map'],data['player_name'])
+                register_user(websocket, data['map'])
                 map=maps.world[data['map']]
                 map_name=data['map']
                 fase = data['fase']

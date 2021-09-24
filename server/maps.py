@@ -1,6 +1,4 @@
-#!/usr/bin/env python
-
-# WS server example that synchronizes state across clients
+# TODO: Evaluar la posibilidad de usar mapas como archivos externos
 world={
     "map1" :
     {
@@ -129,7 +127,7 @@ world={
             0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0,
             0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0,
             0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0,
-            0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, "map1,414,54","map1,414,54", 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 
+            0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, "map1,414,54","map1,414,54", 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0,
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -140,20 +138,40 @@ world={
     }
 }
 
+# Esta lógica sobra, ya que se está duplicando la información de forma innecesaria
+# TODO: Ajustar la lógica de ruta (colision, conection (SIC)) para no tener que
+# usar blocked, ni conections(SIC) y luego eliminar este método y su uso en server
 def populate_tiles():
-    for map in world:
-        cols = world[map]["cols"]
-        rows = world[map]["rows"]
-        t_size = world[map]["t_size"]
-        def getTile(c,r):
-            return world[map]["layers"]["tiles"][r*cols+c]
-        for c in range(cols):
-            for r in range(rows):
-                tile = getTile(c,r)
+    for map in world.values():
+        cols = map["cols"]
+        rows = map["rows"]
+        tile_size = map["t_size"]
+        map_layers = map["layers"]
+
+        for col in range(cols):
+            for row in range(rows):
+                tile = map_layers["tiles"][row * cols + col]
+
                 if tile == 1:
-                    world[map]["layers"]["blocked"].append({"x":c*t_size,"y":r*t_size})
+                    map_layers["blocked"].append(
+                        {
+                            "x": col * tile_size,
+                            "y": row * tile_size
+                        }
+                    )
                 elif type(tile) is str:
-                    c_map=tile.split(",")[0]
-                    c_x=tile.split(",")[1]
-                    c_y=tile.split(",")[2]
-                    world[map]["layers"]["conections"].append({"x":c*t_size,"y":r*t_size,"w":t_size,"h":t_size,"conect":c_map,"conect_x":int(c_x),"conect_y":int(c_y)})
+                    # A conection le falta una n, connection(s) al igual que connect
+                    # TODO: Ajustar aca y en ruta
+                    connected_map, connection_x, connection_y = tile.split(",")
+
+                    map_layers["conections"].append(
+                        {
+                            "x": col * tile_size,
+                            "y": row * tile_size,
+                            "w": tile_size,
+                            "h": tile_size,
+                            "conect": connected_map,
+                            "conect_x": int(connection_x),
+                            "conect_y": int(connection_y)
+                        }
+                    )
