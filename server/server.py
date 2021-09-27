@@ -6,81 +6,65 @@ import json
 import logging
 logging.basicConfig()
 
-from config import SERVER_CONF
-
 import maps
 import weapons
-import ruta
 from player import Player
+
+from config import SERVER_CONF
 
 users_pos={}
 USERS = {}
 maps.populate_tiles()
 
-def register_user(ws, map):
+def register_user(ws, map_name, newPlayer):
     USERS[ws] = {
-        "mapa" : map,
-        "id" : str(ws)
+        "mapa" : map_name,
+        "player" : newPlayer
     }
 
-async def encontrar(ws,new_map,WS):# Encontrar y eliminar un persona del mapa
-    results=[]
-    player_target = {}
-    for map in maps.world:
-        for player in maps.world[map]["players"]:
-            if player == ws:
-                results.append(map)
-                player_target = maps.world[map]["players"][player]
-                break
-    if results:
-        maps.world[results[0]]["players"].pop(ws)
-        new_map["players"][ws] = player_target
-        USERS[WS]["mapa"]=new_map["map_name"]
+def move_to_new_map(ws, new_map_name):
+    for map in maps.world.values():
+        #Easier to ask for forgiveness than permission
+        #https://docs.python.org/3/glossary.html#term-eafp
+        try:
+            player = map['players'].pop(ws)
+            maps.world[new_map_name]['players'][ws] = player
+            break
+        except KeyError:
+            pass
 
-async def stop_player(ws,map,map_name):
-    if ws in map["players"]:
-        map["players"][ws]["ruta"] = {}
-        map["players"][ws]["step"] = 1
-        map["players"][ws]["moves"] = 0
-        await send_update(ws,map_name)
+async def stop_player(ws, map_name):
+    #Easier to ask for forgiveness than permission
+    #https://docs.python.org/3/glossary.html#term-eafp
+    try:
+        player = maps.world[map_name]['players'][ws]
+        player.stop()
+        # No es necesario esperar a enviar el mensaje
 
-async def update_player_position(map,dir,ws,step,moves):
-    if ws in map["players"]:
-        player = map["players"][ws]
-        #TODO: Agregar una función de movimiento al player
-        if dir == "up":
-            player["posY"] -= player["speed"]
-        elif dir == "down":
-            player["posY"] += player["speed"]
-        elif dir == "left":
-            player["posX"] -= player["speed"]
-        elif dir == "right":
-            player["posX"] += player["speed"]
-        player["frame"] += 1
-        # action siempre es diferente de shoot, siempre se envia la action = "walk"
-        # para el mensaje type = "walk" además nunca va a llegar a 5 porque al
-        # llegar a 3 se devuelve a 0
-        # if player["frame"] > 5 and action != "shoot":
-        #     player["frame"] = 0
-        #     player["action"] = action
-        # elif player["frame"] > 3:
-        # ...
-        if player["frame"] > 3:
-            player["frame"] = 0
-        player["dir"] = dir
-        player["step"] = step
-        player["moves"] = moves
+        await send_update(ws, map_name)
+    except KeyError:
+        pass
 
-async def player_refresh(map,map_name,posX,posY,ws,desX,desY):#Nuevo movimiento de jugador
-    if ws in map["players"]:
-        H = map["players"][ws]["H"]
-        W = map["players"][ws]["W"]
-        map["players"][ws]["posX"] = posX
-        map["players"][ws]["posY"] = posY
-        map["players"][ws]["ruta"] = ruta.calcular_ruta(posX,posY,W,H,desX,desY,map_name)
-        map["players"][ws]["step"] = 1
-        map["players"][ws]["moves"] = 0
-        await send_update(ws,map_name)
+
+def update_player_position(map_name, direction, ws, step, moves):
+    #Easier to ask for forgiveness than permission
+    #https://docs.python.org/3/glossary.html#term-eafp
+    try:
+        player = maps.world[map_name]['players'][ws]
+        player.move(direction, step, moves)
+    except KeyError:
+        pass
+
+
+async def player_refresh(map_name, posX, posY, ws, desX, desY):
+    #Easier to ask for forgiveness than permission
+    #https://docs.python.org/3/glossary.html#term-eafp
+    try:
+        player = maps.world[map_name]['players'][ws]
+        player.refresh(posX, posY, desX, desY, map_name)
+        await send_update(ws, map_name)
+    except KeyError:
+        pass
 
 async def new_attack(pos_player_x, pos_player_y, pos_target_x, pos_target_y, target, player, weapon):
     player_weapon = weapons.clases[weapon]
@@ -111,6 +95,8 @@ async def new_attack(pos_player_x, pos_player_y, pos_target_x, pos_target_y, tar
 
     for user in USERS:
         #TODO: Mover método de envíar información a player
+        #User es igual a id y no hay que recorrer todo el array
+        #TODO: Quitar el for sobra
         if player == USERS[user]["id"] or target == USERS[user]["id"]:
             data = {
                 "type":"new_attack",
@@ -136,13 +122,14 @@ async def new_attack(pos_player_x, pos_player_y, pos_target_x, pos_target_y, tar
             message = json.dumps(data)
             await user.send(message)
 
-async def start_player(map,map_name,player_name,body,hair,outfit,ws,fase):# Parametros iniciales al conectarse
+async def start_player(map_name, player_name, body, hair, outfit, ws, fase):# Parametros iniciales al conectarse
     newPlayer = Player(player_name, body, hair, outfit, ws)
+    register_user(ws, map_name, newPlayer)
+    maps.world[map_name]['players'][ws] = newPlayer
+
     await send_start_message(ws,map_name,fase)
 
-    map["players"][ws] = newPlayer
-
-async def new_map_player(map,dir,posX,posY,ws):
+async def new_map_player(map,dir,posX,posY, ws):
     map["players"][ws]["dir"] = dir
     map["players"][ws]["posX"] = posX
     map["players"][ws]["posY"] = posY
@@ -150,16 +137,24 @@ async def new_map_player(map,dir,posX,posY,ws):
     map["players"][ws]["step"] = 1
     map["players"][ws]["moves"] = 0
 
-async def send_update(user_id,map_name):
-    if USERS:
-        for user in USERS:
-            if map_name == USERS[user]["mapa"]:
-                data = {
-                    "data":maps.world[USERS[user]["mapa"]]["players"][user_id],
-                    "type":"new_move"
-                }
-                message = json.dumps(data)
-                await user.send(message)
+async def send_update(ws, map_name):
+    #Easier to ask for forgiveness than permission
+    #https://docs.python.org/3/glossary.html#term-eafp
+    try:
+        players_map = maps.world[map_name]['players']
+        player_updated = players_map[ws]
+        data = {
+            "type": "new_move",
+            "data": player_updated.get_data()
+        }
+
+        for player in players_map.values():
+            # No es necesario esperar a enviar un mensaje a un jugador para
+            # envíar el otro
+            # TODO: Revisar si se puede eliminar el await
+            await player.sendData(data)
+    except KeyError:
+        pass
 
 async def send_msj(user_id,player_name,map_name,chat):
     if USERS:
@@ -176,8 +171,8 @@ async def send_msj(user_id,player_name,map_name,chat):
                 message = json.dumps(data)
                 await user.send(message)
 
-async def player_attacked(map, target, player, weapon, wx, wy):
-    map_target = map["players"][target]
+async def player_attacked(map_name, target, player, weapon, wx, wy):
+    map_target = maps.world[map_name]['players'][target]
     target_1_x = map_target["posX"]
     target_2_x = map_target["posX"] + map_target["W"]
     target_1_y = map_target["posY"]
@@ -208,25 +203,38 @@ Si el usuario es el mismo que se conectó, le envía el mensaje start
 De lo contrario, valida que esté en el mismo mapa que el usuario que ingresó
     para notificarle que un usuario nuevo ingresó
 '''
-async def send_start_message(user_id,map_name,fase):
-    if USERS:
-        for user in USERS:
-            #TODO: Mover a un método de player
-            if user_id == USERS[user]["id"]:
-                message = json.dumps({
-                "type":"start",
-                "data":maps.world[USERS[user]["mapa"]],
-                "id":user_id,
-                "fase":fase})
-                await user.send(message)
-            elif map_name == USERS[user]["mapa"]:
-                data = {
-                    "data":maps.world[map_name]["players"][user_id],
-                    "items":{},
-                    "type":"new_player"
-                }
-                message = json.dumps(data)
-                await user.send(message)
+async def send_start_message(user_id, map_name, fase):
+    try:
+        player_map = maps.world[map_name]
+        players_in_map = player_map['players']
+        player_started = players_in_map[user_id]
+
+        data_player = {
+            "type": "start",
+            #TODO: Probablemente no toda la información sea necearia aqui
+            # Dictionay Comprehension para quitar players de la info envíada
+            # https://stackoverflow.com/a/17665928/1647238
+            # players no se puede serializar
+            "data": {key:player_map[key] for key in player_map if key != 'players'},
+            "id": user_id,
+            "fase": fase
+        }
+
+        data_everybody_else = {
+            "type": "new_player",
+            #TODO: Probablemente no toda la información sea necearia aqui
+            "data": player_started.get_full_data(),
+            "items": {}
+        }
+
+        for ws, player in players_in_map.items():
+            # No es necesario esperar a enviar un mensaje a un jugador para
+            # envíar el otro
+            # TODO: Revisar si se puede eliminar el await
+            data = data_player if (ws == user_id) else data_everybody_else
+            await player.sendData(data)
+    except KeyError:
+        pass
 
 async def update_players(new_map,actual_map,user_id):
     if USERS:
@@ -242,9 +250,9 @@ async def update_players(new_map,actual_map,user_id):
                 await user.send(message)
             elif new_map == USERS[user]["mapa"] and user_id != USERS[user]["id"]:
                 data = {
+                    "type":"new_player",
                     "data":maps.world[USERS[user]["mapa"]]["players"][user_id],
-                    "items":{},
-                    "type":"new_player"
+                    "items":{}
                 }
                 message = json.dumps(data)
                 await user.send(message)
@@ -273,50 +281,47 @@ async def action(websocket, path): #Escuchar acciones del cliente
          async for message in websocket:
             data = json.loads(message)
             if data['type']=='new_state':
-                map=maps.world[data['map']]
                 map_name=data['map']
                 posX=data['posX']
                 posY=data['posY']
                 desX = data['desX']
                 desY = data['desY']
-                await player_refresh(map,map_name,posX,posY,str(websocket),desX,desY)
+                await player_refresh(map_name,posX,posY,websocket,desX,desY)
             elif data['type']=='new_position':
-                map=maps.world[data['map']]
+                map_name=data['map']
                 dir=data['dir']
                 step=data['step']
                 moves=data['moves']
-                await update_player_position(map,dir,str(websocket),step,moves)
-            elif data['type']=='new_map':
-                new_map=maps.world[data['new_map']]
-                posX=data['posX']
-                posY=data['posY']
-                await encontrar(str(websocket),new_map,websocket)
+                update_player_position(map_name,dir,websocket,step,moves)
+            elif data['type'] == 'new_map':
+                new_map_name = data['new_map']
+                new_map = maps.world[new_map_name]
+                posX = data['posX']
+                posY = data['posY']
+                await move_to_new_map(websocket, new_map_name)
                 await new_map_player(new_map,dir,posX,posY,str(websocket))
                 await update_players(data['new_map'],data['actual_map'],str(websocket))
             elif data['type']=='start':
-                register_user(websocket, data['map'])
-                map=maps.world[data['map']]
                 map_name=data['map']
                 fase = data['fase']
                 player_name=data['player_name']
                 body=data['body']
                 hair=data['hair']
                 outfit=data['outfit']
-                await start_player(map,map_name,player_name,body,hair,outfit,str(websocket),fase)
+                await start_player(map_name, player_name, body, hair, outfit, websocket, fase)
             elif data['type']=='attack':
-                map=maps.world[data['map']]
+                map_name=data['map']
                 target=data['ws']
                 player=str(websocket)
                 weapon=data['weapon']
                 wx=data['Wx']
                 wy=data['Wy']
-                await player_attacked(map,target,player,weapon,wx,wy)
+                await player_attacked(map_name,target,player,weapon,wx,wy)
             elif data['type']=='dead_player':
                 await unregister_user(websocket)
             elif data['type']=='stop':
                 map_name=data['map']
-                map=maps.world[data['map']]
-                await stop_player(str(websocket),map,map_name)
+                await stop_player(websocket, map_name)
             elif data['type']=='chat':
                 map_name=data['map']
                 player_name=data['player_name']

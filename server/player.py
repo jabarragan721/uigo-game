@@ -6,6 +6,7 @@ import attr
 import json
 
 import weapons
+import ruta
 
 #TODO: Tiene muchos atributos, tal vez se pueda agrupar algunos en caracteristicas
 @attr.s
@@ -65,6 +66,32 @@ class Player():
         self.step = step
         self.moves = moves
 
-    def sendMessage(self, message):
-        serializedMessage = json.dumps(message)
-        self.Socket.send(serializedMessage)
+    def stop(self):
+        self.ruta = {}
+        self.step = 1
+        self.moves = 0
+
+    def get_data(self):
+        return {
+            'dir': self.dir,
+            'posX': self.posX,
+            'posY': self.posY,
+            'ruta': self.ruta,
+            'step': self.step,
+            'moves': self.moves
+        }
+
+    def get_full_data(self):
+        return attr.asdict(self)
+
+    #TODO: Cambiar a un nombre más descriptivo
+    def refresh(self, posX, posY, desX, desY, map_name):
+        self.posX = posX
+        self.posY = posY
+        self.ruta = ruta.calcular_ruta(posX,posY,self.W,self.H,desX,desY,map_name)
+        self.step = 1
+        self.moves = 0
+
+    def sendData(self, data):
+        message = json.dumps(data)
+        self.Socket.send(message)
