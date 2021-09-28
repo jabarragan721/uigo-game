@@ -40,7 +40,7 @@ async def stop_player(ws, map_name):
         player = maps.world[map_name]['players'][ws]
         player.stop()
         # No es necesario esperar a enviar el mensaje
-
+        # TODO: Revisar si se puede eliminar el await
         await send_update(ws, map_name)
     except KeyError:
         pass
@@ -92,35 +92,35 @@ async def new_attack(pos_player_x, pos_player_y, pos_target_x, pos_target_y, tar
         else:
             direction = "down" if (vy > 0) else "up"
 
+    data = {
+        "type":"new_attack",
+        "data":{
+            "dx":dx,
+            "dy":dy,
+            "speed":speed,
+            "sprite":sprite,
+            "bullet":bullet,
+            "width":width,
+            "height":height,
+            "animated":animated,
+            "alcance":alcance, # Cambiar a range
+            "w_dir":direction,
+            "frame":0,
+            "frame_ratio":0,
+            "x":pos_player_x,
+            "y":pos_player_y,
+            "player": str(player),
+            "dir":direction
+        }
+    }
 
-    for user in USERS:
-        #TODO: Mover método de envíar información a player
-        #User es igual a id y no hay que recorrer todo el array
-        #TODO: Quitar el for sobra
-        if player == USERS[user]["id"] or target == USERS[user]["id"]:
-            data = {
-                "type":"new_attack",
-                "data":{
-                    "dx":dx,
-                    "dy":dy,
-                    "speed":speed,
-                    "sprite":sprite,
-                    "bullet":bullet,
-                    "width":width,
-                    "height":height,
-                    "animated":animated,
-                    "alcance":alcance, # Cambiar a range
-                    "w_dir":direction,
-                    "frame":0,
-                    "frame_ratio":0,
-                    "x":pos_player_x,
-                    "y":pos_player_y,
-                    "player":player,
-                    "dir":direction
-                }
-            }
-            message = json.dumps(data)
-            await user.send(message)
+    hero = USERS[player]['player']
+    await hero.sendData(data)
+
+    try:
+        enemy = USERS[target]['player']
+        await enemy.sendData(data)
+    except KeyError: pass
 
 async def start_player(map_name, player_name, body, hair, outfit, ws, fase):# Parametros iniciales al conectarse
     newPlayer = Player(player_name, body, hair, outfit, ws)
@@ -129,13 +129,14 @@ async def start_player(map_name, player_name, body, hair, outfit, ws, fase):# Pa
 
     await send_start_message(ws,map_name,fase)
 
-async def new_map_player(map,dir,posX,posY, ws):
-    map["players"][ws]["dir"] = dir
-    map["players"][ws]["posX"] = posX
-    map["players"][ws]["posY"] = posY
-    map["players"][ws]["ruta"] = {}
-    map["players"][ws]["step"] = 1
-    map["players"][ws]["moves"] = 0
+async def new_map_player(map_name,dir,posX,posY, ws):
+    player = maps.world[map_name]['players'][ws]
+    player["dir"] = dir
+    player["posX"] = posX
+    player["posY"] = posY
+    player["ruta"] = {}
+    player["step"] = 1
+    player["moves"] = 0
 
 async def send_update(ws, map_name):
     #Easier to ask for forgiveness than permission
@@ -145,7 +146,7 @@ async def send_update(ws, map_name):
         player_updated = players_map[ws]
         data = {
             "type": "new_move",
-            "data": player_updated.get_data()
+            "data": player_updated.get_full_data()
         }
 
         for player in players_map.values():
@@ -186,17 +187,23 @@ async def player_attacked(map_name, target, player, weapon, wx, wy):
         if health<1:
             health = 0
         map_target["health"]-=dammage
-        for user in USERS:
-            if player == USERS[user]["id"] or target == USERS[user]["id"]:
-                data = {
-                    "type":"player_dammaged",
-                    "data":{
-                        "player":target,
-                        "health": health,
-                    }
-                }
-                message = json.dumps(data)
-                await user.send(message)
+
+        data = {
+            "type":"player_dammaged",
+            "data":{
+                "player": target,
+                "health": health,
+            }
+        }
+
+        hero = USERS[player]['player']
+        #TODO !IMPORTANT: Guardar todos los ids por string en vez de ws
+        enemy = USERS[target]['player']
+
+        await hero.sendData(data)
+        await enemy.sendData(data)
+
+
 '''
 Envía un mensaje a todos los usuarios
 Si el usuario es el mismo que se conectó, le envía el mensaje start
@@ -212,13 +219,14 @@ async def send_start_message(user_id, map_name, fase):
         data_player = {
             "type": "start",
             #TODO: Probablemente no toda la información sea necearia aqui
-            # Dictionay Comprehension para quitar players de la info envíada
+            # Dictionary Comprehension para quitar players de la info envíada
             # https://stackoverflow.com/a/17665928/1647238
             # players no se puede serializar
             "data": {key:player_map[key] for key in player_map if key != 'players'},
-            "id": user_id,
+            "id": str(user_id),
             "fase": fase
         }
+        data_player['data']['players'] = {str(key):player.get_full_data() for key, player in players_in_map.items()}
 
         data_everybody_else = {
             "type": "new_player",
@@ -295,12 +303,11 @@ async def action(websocket, path): #Escuchar acciones del cliente
                 update_player_position(map_name,dir,websocket,step,moves)
             elif data['type'] == 'new_map':
                 new_map_name = data['new_map']
-                new_map = maps.world[new_map_name]
                 posX = data['posX']
                 posY = data['posY']
                 await move_to_new_map(websocket, new_map_name)
-                await new_map_player(new_map,dir,posX,posY,str(websocket))
-                await update_players(data['new_map'],data['actual_map'],str(websocket))
+                await new_map_player(new_map_name,dir,posX,posY,websocket)
+                await update_players(new_map_name,data['actual_map'],str(websocket))
             elif data['type']=='start':
                 map_name=data['map']
                 fase = data['fase']
@@ -312,11 +319,10 @@ async def action(websocket, path): #Escuchar acciones del cliente
             elif data['type']=='attack':
                 map_name=data['map']
                 target=data['ws']
-                player=str(websocket)
                 weapon=data['weapon']
                 wx=data['Wx']
                 wy=data['Wy']
-                await player_attacked(map_name,target,player,weapon,wx,wy)
+                await player_attacked(map_name,target,websocket,weapon,wx,wy)
             elif data['type']=='dead_player':
                 await unregister_user(websocket)
             elif data['type']=='stop':
@@ -330,7 +336,6 @@ async def action(websocket, path): #Escuchar acciones del cliente
             # Se envía un ataque
             elif data['type']=='attack_action':
                 target=data['target_id']
-                player=str(websocket)
                 #posición player
                 px=data['px']
                 py=data['py']
@@ -339,7 +344,7 @@ async def action(websocket, path): #Escuchar acciones del cliente
                 ty=data['ty']
                 weapon=data['weapon']
 
-                await new_attack(px,py,tx,ty,target,player,weapon)
+                await new_attack(px,py,tx,ty,target,websocket,weapon)
             else:
                 logging.error(f'unsupported event: {data}')
     finally:

@@ -82,7 +82,28 @@ class Player():
         }
 
     def get_full_data(self):
-        return attr.asdict(self)
+        return {
+            'name': self.name,
+            'body': self.body,
+            'hair': self.hair,
+            'outfit': self.outfit,
+            'frame': self.frame,
+            'dir': self.dir,
+            'action': self.action,
+            'chat': self.chat,
+            'posX': self.posX,
+            'posY': self.posY,
+            'H': self.H,
+            'W': self.W,
+            'Socket': str(self.Socket),
+            'max_health': self.max_health,
+            'health': self.health,
+            'speed': self.speed,
+            'ruta': self.ruta,
+            'step': self.step,
+            'moves': self.moves,
+            'weapons': self.weapons
+        }
 
     #TODO: Cambiar a un nombre más descriptivo
     def refresh(self, posX, posY, desX, desY, map_name):
@@ -92,6 +113,6 @@ class Player():
         self.step = 1
         self.moves = 0
 
-    def sendData(self, data):
+    async def sendData(self, data):
         message = json.dumps(data)
-        self.Socket.send(message)
+        await self.Socket.send(message)
