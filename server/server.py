@@ -158,35 +158,37 @@ async def send_update(ws, map_name):
         pass
 
 async def send_msj(user_id,player_name,map_name,chat):
-    if USERS:
-        for user in USERS:
-            translation_table = dict.fromkeys(map(ord, '<>/$@'), None)
-            chat = chat.translate(translation_table)
-            if map_name == USERS[user]["mapa"]:
-                data = {
-                    "data":chat,
-                    "player":user_id,
-                    "type":"new_msj",
-                    "player_name":player_name
-                }
-                message = json.dumps(data)
-                await user.send(message)
+    translation_table = dict.fromkeys(map(ord, '<>/$@'), None)
+    chat = chat.translate(translation_table)
+
+    data = {
+        "data":chat,
+        "player":user_id,
+        "type":"new_msj",
+        "player_name":player_name
+    }
+
+    #TODO: Crear un método para enviar un mensaje a todos los players de un mapa
+    player_map =  maps.world[map_name]
+    for player in player_map['players'].values():
+        await player.sendData(data)
 
 async def player_attacked(map_name, target, player, weapon, wx, wy):
-    map_target = maps.world[map_name]['players'][target]
-    target_1_x = map_target["posX"]
-    target_2_x = map_target["posX"] + map_target["W"]
-    target_1_y = map_target["posY"]
-    target_2_y = map_target["posY"] + map_target["H"]
-    if (wx > target_1_x
-        and wx < target_2_x
-        and wy > target_1_y
-        and wy < target_2_y):
+    hero_player = maps.world[map_name]['players'][player]
+    target_player = maps.world[map_name]['players'][target]
+    target_1_x = target_player["posX"]
+    target_2_x = target_player["posX"] + target_player["W"]
+    target_1_y = target_player["posY"]
+    target_2_y = target_player["posY"] + target_player["H"]
+    if (    wx > target_1_x
+            and wx < target_2_x
+            and wy > target_1_y
+            and wy < target_2_y):
         dammage = weapons.clases[weapon]["dammage"]
-        health = map_target["health"] - dammage
+        health = target_player["health"] - dammage
         if health<1:
             health = 0
-        map_target["health"]-=dammage
+        target_player["health"]-=dammage
 
         data = {
             "type":"player_dammaged",
@@ -196,12 +198,8 @@ async def player_attacked(map_name, target, player, weapon, wx, wy):
             }
         }
 
-        hero = USERS[player]['player']
-        #TODO !IMPORTANT: Guardar todos los ids por string en vez de ws
-        enemy = USERS[target]['player']
-
-        await hero.sendData(data)
-        await enemy.sendData(data)
+        await hero_player.sendData(data)
+        await target_player.sendData(data)
 
 
 '''
@@ -222,7 +220,7 @@ async def send_start_message(user_id, map_name, fase):
             # Dictionary Comprehension para quitar players de la info envíada
             # https://stackoverflow.com/a/17665928/1647238
             # players no se puede serializar
-            "data": {key:player_map[key] for key in player_map if key != 'players'},
+            "data": { key:player_map[key] for key in player_map if key != 'players' },
             "id": str(user_id),
             "fase": fase
         }
@@ -244,45 +242,62 @@ async def send_start_message(user_id, map_name, fase):
     except KeyError:
         pass
 
-async def update_players(new_map,actual_map,user_id):
-    if USERS:
-        #TODO: Mover a un método de player
-        for user in USERS:
-            if actual_map == USERS[user]["mapa"] and user_id != USERS[user]["id"]:
-                data = {
-                    "data":user_id,
-                    "items":{},
-                    "type":"player_out"
-                }
-                message = json.dumps(data)
-                await user.send(message)
-            elif new_map == USERS[user]["mapa"] and user_id != USERS[user]["id"]:
-                data = {
-                    "type":"new_player",
-                    "data":maps.world[USERS[user]["mapa"]]["players"][user_id],
-                    "items":{}
-                }
-                message = json.dumps(data)
-                await user.send(message)
-            elif new_map == USERS[user]["mapa"] and user_id == USERS[user]["id"]:
-                message = json.dumps({"type":"new_map","data":maps.world[USERS[user]["mapa"]]})
-                await user.send(message)
+async def update_players(new_map, previous_map, user_id):
+    data_player_out = {
+        "type": "player_out",
+        "data": str(user_id),
+        "items": {}
+    }
+
+    #TODO: Crear un método para enviar un mensaje a todos los players de un mapa
+    for previous_player in maps.world[previous_map]['players'].values():
+        await previous_player.sendData(data_player_out)
+
+
+    new_map = maps.world[new_map]
+
+    dataNewPlayer = {
+        "type": "new_player",
+        "data": new_map['players'][user_id].getFullData(),
+        "items": {}
+    }
+
+    players_id_new_map_no_hero = maps.world[new_map]['players'].keys() - { user_id }
+    for player_id_new_map in players_id_new_map_no_hero:
+        player_new_map = new_map['players'][player_id_new_map]
+        await player_new_map.sendData(dataNewPlayer)
+
+
+    dataNewMap = {
+        "type":"new_map",
+        #TODO: Probablemente no toda la información sea necearia aqui
+        # Dictionary Comprehension para quitar players de la info envíada
+        # https://stackoverflow.com/a/17665928/1647238
+        # players no se puede serializar
+        "data": { key:new_map[key] for key in new_map if key != 'players' },
+    }
+    players_in_map = new_map['players']
+    dataNewMap['data']['players'] = {str(key):player.get_full_data() for key, player in players_in_map.items()}
+
+    player_new_map = new_map['players'][user_id]
+    await player_new_map.sendData(dataNewMap)
 
 async def unregister_user(ws):
-    USERS.pop(ws, None)
-    for map in maps.world:
-        for player in maps.world[map]["players"]:
-            if player == str(ws):
-                maps.world[map]["players"].pop(player)
-                for user in USERS:
-                    if map == USERS[user]["mapa"]:
-                        data = {
-                            "data":str(ws),
-                            "type":"player_out"
-                        }
-                        message = json.dumps(data)
-                        await user.send(message)
-                break
+    for map in maps.world.values():
+        try:
+            maps.world[map]['players'].pop(ws)
+
+            data_player_out = {
+                "type":"player_out",
+                "data":str(ws)
+            }
+            #TODO: Crear un método para enviar un mensaje a todos los players de un mapa
+            for players_map in maps.world[map]['players'].values():
+                await players_map.sendData(data_player_out)
+
+            break
+        except KeyError: pass
+
 
 async def action(websocket, path): #Escuchar acciones del cliente
     try:
@@ -303,11 +318,12 @@ async def action(websocket, path): #Escuchar acciones del cliente
                 update_player_position(map_name,dir,websocket,step,moves)
             elif data['type'] == 'new_map':
                 new_map_name = data['new_map']
+                actual_map = data['actual_map']
                 posX = data['posX']
                 posY = data['posY']
                 await move_to_new_map(websocket, new_map_name)
                 await new_map_player(new_map_name,dir,posX,posY,websocket)
-                await update_players(new_map_name,data['actual_map'],str(websocket))
+                await update_players(new_map_name, actual_map, websocket)
             elif data['type']=='start':
                 map_name=data['map']
                 fase = data['fase']
