@@ -11,7 +11,7 @@ import math
 from config import SERVER_CONF
 
 logging.basicConfig()
-users_pos={}
+
 USERS = {}
 maps.populate_tiles()
 async def register(ws,map):
