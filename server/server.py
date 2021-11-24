@@ -4,12 +4,9 @@ import json
 import logging
 import websockets
 import maps
-import threading
-import time
 import weapons
 import ruta
 import math
-import os
 
 from config import SERVER_CONF
 
@@ -17,20 +14,17 @@ logging.basicConfig()
 users_pos={}
 USERS = {}
 maps.populate_tiles()
-async def register(ws,map,nombre):
+async def register(ws,map):
     USERS[ws] = {"mapa":map,"id":str(ws)}
 
-async def encontrar(ws,new_map,WS):#encontrar y eliminar un persona del mapa
-    results=[]
+async def encontrar(ws,actual_map,new_map,WS):#encontrar y eliminar una persona del mapa
     player_target = {}
-    for map in maps.world:
-        for player in maps.world[map]["players"]:
-            if player == ws:
-                results.append(map)
-                player_target = maps.world[map]["players"][player]
-                break
-    if results:
-        maps.world[results[0]]["players"].pop(ws)
+    for player in actual_map["players"]:
+        if player == ws:
+            player_target = actual_map["players"][player]
+            break 
+    if player_target:
+        actual_map["players"].pop(ws)
         new_map["players"][ws] = player_target
         USERS[WS]["mapa"]=new_map["map_name"]
 
@@ -309,15 +303,15 @@ async def action(websocket, path): #Escuchar acciones del cliente
                 action=data['action']
                 await update_position(map,dir,action,str(websocket),step,moves)
             elif data['type']=='new_map':
-                actual_map=maps.world[data['actual_map']]
+                actual_map=maps.world[data['actual_map']] 
                 new_map=maps.world[data['new_map']]
                 posX=data['posX']
                 posY=data['posY']
-                await encontrar(str(websocket),new_map,websocket)
+                await encontrar(str(websocket),actual_map,new_map,websocket)
                 await new_map_player(new_map,dir,posX,posY,str(websocket))
                 await update_players(data['new_map'],data['actual_map'],str(websocket))
             elif data['type']=='start':
-                await register(websocket,data['map'],data['player_name'])
+                await register(websocket,data['map'])
                 map=maps.world[data['map']]
                 map_name=data['map']
                 fase = data['fase']
