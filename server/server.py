@@ -185,26 +185,42 @@ async def send_update(user_id,map_name):
                 message = json.dumps(data)
                 await user.send(message)
 
-async def send_msj(user_id,player_name,map_name,chat):
+async def send_msj(user_id,player_name,target,map_name,chat):
     if USERS:
-        for user in USERS:
-            translation_table = dict.fromkeys(map(ord, '<>/$@'), None)
-            chat = chat.translate(translation_table)
-            if map_name == USERS[user]["mapa"]:
-                data = {
-                    "data":chat,
-                    "player":user_id,
-                    "type":"new_msj",
-                    "player_name":player_name
-                }
-                message = json.dumps(data)
-                await user.send(message)
+        if target == "global":
+            for user in USERS:
+                translation_table = dict.fromkeys(map(ord, '<>/$@'), None)
+                chat = chat.translate(translation_table)
+                if map_name == USERS[user]["mapa"]:
+                    data = {
+                        "data":chat,
+                        "target":"global",
+                        "player":user_id,
+                        "type":"new_msj",
+                        "player_name":player_name
+                    }
+                    message = json.dumps(data)
+                    await user.send(message)
+        else:
+            for user in USERS:
+                translation_table = dict.fromkeys(map(ord, '<>/$@'), None)
+                chat = chat.translate(translation_table)
+                if map_name == USERS[user]["mapa"] and str(user) == target:
+                    data = {
+                        "data":chat,
+                        "target":"private",
+                        "player":user_id,
+                        "type":"new_msj",
+                        "player_name":player_name
+                    }
+                    message = json.dumps(data)
+                    await user.send(message)
 
 async def player_attacked(map,target,player,weapon,wx,wy):
-    target_1_x = map["players"][target]["posX"];
-    target_2_x = map["players"][target]["posX"] + map["players"][target]["W"];
-    target_1_y = map["players"][target]["posY"];
-    target_2_y = map["players"][target]["posY"] + map["players"][target]["H"];
+    target_1_x = map["players"][target]["posX"]
+    target_2_x = map["players"][target]["posX"] + map["players"][target]["W"]
+    target_1_y = map["players"][target]["posY"]
+    target_2_y = map["players"][target]["posY"] + map["players"][target]["H"]
     if wx>target_1_x and wx<target_2_x and wy>target_1_y and wy<target_2_y:
         dammage = weapons.clases[weapon]["dammage"]
         health = map["players"][target]["health"] - dammage
@@ -337,8 +353,9 @@ async def action(websocket, path): #Escuchar acciones del cliente
             elif data['type']=='chat':
                 map_name=data['map']
                 player_name=data['player_name']
+                target=data['target']
                 chat=data['chat']
-                await send_msj(str(websocket),player_name,map_name,chat)
+                await send_msj(str(websocket),player_name,target,map_name,chat)
             elif data['type']=='attack_action':
                 target=data['target_id']
                 player=str(websocket)
