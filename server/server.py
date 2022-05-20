@@ -357,8 +357,11 @@ async def action(websocket, path): #Escuchar acciones del cliente
     finally:
         await unregister(websocket)
 
-#Para correr el server localmente habilitar la linea 361 y comentar la linea 362
-start_server = websockets.serve(action, "192.168.0.4", 6789)
-#start_server = websockets.serve(action, "", int(os.environ["PORT"]))
-asyncio.get_event_loop().run_until_complete(start_server)
-asyncio.get_event_loop().run_forever()
+async def local():
+    async with websockets.serve(action, "192.168.0.4", 6789):
+        await asyncio.Future()
+async def heroku():
+    async with websockets.serve(action, "", int(os.environ["PORT"])):
+        await asyncio.Future()
+asyncio.run(local())
+#asyncio.run(heroku())
