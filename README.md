@@ -3,9 +3,10 @@ Juego de rol multijugador online con gráficos 2D
 
 Proyecto en desarrollo abierto a colaboración por parte de programadores externos.
 Tecnologías usadas:
+- HTML
+- CSS
 - Vanilla JS
-- Pyhton
-- Websockets (Libreria websockets-9.1)
+- Pyhton3 (Libreria websockets-9.1)
 
 Últimas modificaciones:
 - Agosto 13 2021: Revisión de caracteres en el Chat global para evitar injección de HTML.
